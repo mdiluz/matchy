@@ -1,22 +1,18 @@
 # This example requires the 'message_content' intent.
 
 import discord
+import os
+import logging
+from discord.ext import commands
 
 intents = discord.Intents.default()
 intents.message_content = True
 
-client = discord.Client(intents=intents)
+bot = commands.Bot(command_prefix='$', description="test", intents=intents)
 
-@client.event
-async def on_ready():
-    print(f'We have logged in as {client.user}')
+@bot.command()
+async def hello(ctx, *args):
+    """Just say hello back"""
+    await ctx.send(f"Hi {ctx.author.mention}")
 
-@client.event
-async def on_message(message):
-    if message.author == client.user:
-        return
-
-    if message.content.startswith('$hello'):
-        await message.channel.send('Hello!')
-
-client.run('your token here')
+bot.run(os.getenv("BOT_TOKEN"))
