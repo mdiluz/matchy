@@ -1,5 +1,8 @@
 # Matchy
-Matchy matches matchies
+Matchy matches matchees
+
+## Commands
+### /match
 
 ## Dependencies
 * `python3` obviously
