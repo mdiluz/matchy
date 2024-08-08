@@ -46,8 +46,10 @@ async def sync(ctx: discord.ext.commands.context.Context):
 
 @bot.tree.command(description = "Match matchees into groups", guilds = list(g for g in guilds if g.id in config.SERVERS))
 @app_commands.describe(per_group = "Matchees per group")
-async def match(interaction: discord.Interaction, per_group: int = 3):
+async def match(interaction: discord.Interaction, per_group: int = None):
     """Match groups of channel members"""
+    if not per_group:
+        per_group = 3
     
     logger.info(f"User {interaction.user} requested /match {per_group}")
 
