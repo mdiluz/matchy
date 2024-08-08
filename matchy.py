@@ -34,6 +34,7 @@ async def on_ready():
 
 @bot.command()
 @commands.check(lambda ctx:  ctx.message.author.id in config.OWNERS)
+@commands.dm_only()
 async def sync(ctx: discord.ext.commands.context.Context):
     """Handle sync command"""
     # Sync the commands with the discord API
@@ -46,6 +47,7 @@ async def sync(ctx: discord.ext.commands.context.Context):
 
 @bot.tree.command(description = "Match matchees into groups", guilds = list(g for g in guilds if g.id in config.SERVERS))
 @app_commands.describe(per_group = "Matchees per group (default 3+)", post = "Post to channel")
+@commands.guild_only()
 async def match(interaction: discord.Interaction, per_group: int = None, post: bool = None):
     """Match groups of channel members"""
     if not per_group:
