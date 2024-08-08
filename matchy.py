@@ -32,18 +32,12 @@ def get_ordinal(num : int):
     else:
         return str(num)+'th'
 
-guilds = {}
+guilds = []
 def sync_guilds():
     # Cache the guild info
     for guild in bot.guilds:
         if guild.id in config.SERVERS:
-            guilds[guild.id] = { "guild" : guild }
-
-    # Grab the role info
-    for id in guilds:
-        guild = guilds[id]
-        guild["matchee"] = find_role_by_name(guild["guild"].roles, "Matchee")
-        guild["matcher"] = find_role_by_name(guild["guild"].roles, "Matcher") 
+            guilds.append(guild)
 
     print(f"Synced {len(guilds)} guild(s)")
 
@@ -65,19 +59,13 @@ async def sync(ctx):
     sync_guilds()
         
 
-@bot.tree.command(description = "Match matchees into groups")
+@bot.tree.command(description = "Match matchees into groups", guilds = list(g for g in guilds if g.id in config.SERVERS))
 @app_commands.describe(per_group = "Matchees per group")
 async def match(interaction: discord.Interaction, per_group: int):
 
-    # Grab the guild
-    guild = guilds.get(interaction.guild.id, None)
-    if not guild:
-        await interaction.response.send_message("Server not registered :(", ephemeral=True)
-        return
-
     # Grab the roles
-    matchee = guild["matchee"]
-    matcher = guild["matcher"]
+    matchee = find_role_by_name(interaction.guild.roles, "Matchee")
+    matcher = find_role_by_name(interaction.guild.roles, "Matcher") 
     if not matchee or not matcher:
         await interaction.response.send_message("Server has missing matchy roles :(", ephemeral=True)
         return
