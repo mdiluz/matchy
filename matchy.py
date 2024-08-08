@@ -24,7 +24,7 @@ guilds = []
 def cache_guilds():
     """Sync current bot guilds to a list to use"""
     guilds = list(g for g in bot.guilds if g.id in config.SERVERS)
-    logger.info(f"Synced {len(guilds)} guild(s)")
+    logger.info(f"Cached {len(guilds)} guild(s)")
 
 @bot.event
 async def on_ready():
@@ -45,8 +45,8 @@ async def sync(ctx: discord.ext.commands.context.Context):
         
 
 @bot.tree.command(description = "Match matchees into groups", guilds = list(g for g in guilds if g.id in config.SERVERS))
-@app_commands.describe(per_group = "Matchees per group (default 3+)", dry_run = "Run but do not post")
-async def match(interaction: discord.Interaction, per_group: int = None, dry_run: bool = None):
+@app_commands.describe(per_group = "Matchees per group (default 3+)", post = "Post to channel")
+async def match(interaction: discord.Interaction, per_group: int = None, post: bool = None):
     """Match groups of channel members"""
     if not per_group:
         per_group = 3
@@ -66,7 +66,7 @@ async def match(interaction: discord.Interaction, per_group: int = None, dry_run
         return
     
     # Let the channel know the matching is starting
-    if not dry_run:
+    if post:
         await interaction.channel.send(f"{interaction.user.display_name} asked me to match groups of {per_group}! :partying_face:")
 
     # Find all the members in the role
@@ -91,7 +91,7 @@ async def match(interaction: discord.Interaction, per_group: int = None, dry_run
         group_msgs.append(f"{util.get_ordinal(idx+1)} group: " + ", ".join(mentions))
 
     # Send the messages
-    if not dry_run:
+    if post:
         for msg in group_msgs:
             await interaction.channel.send(msg)
     else:
