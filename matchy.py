@@ -98,7 +98,8 @@ async def match(interaction: discord.Interaction, per_group: int = None, post: b
         await interaction.response.send_message("\n".join(group_msgs), ephemeral=True, silent=True)
     
     logger.info(f"Done")
-    await interaction.response.send_message("Done :)", ephemeral=True, silent=True)
+    if post:
+        await interaction.response.send_message("Done :)", ephemeral=True, silent=True)
 
 # Kick off the bot run cycle
 handler = logging.StreamHandler()
