@@ -45,8 +45,8 @@ async def sync(ctx: discord.ext.commands.context.Context):
         
 
 @bot.tree.command(description = "Match matchees into groups", guilds = list(g for g in guilds if g.id in config.SERVERS))
-@app_commands.describe(per_group = "Matchees per group")
-async def match(interaction: discord.Interaction, per_group: int = None):
+@app_commands.describe(per_group = "Matchees per group (default 3+)", dry_run = "Run but do not post")
+async def match(interaction: discord.Interaction, per_group: int = None, dry_run: bool = None):
     """Match groups of channel members"""
     if not per_group:
         per_group = 3
@@ -66,7 +66,8 @@ async def match(interaction: discord.Interaction, per_group: int = None):
         return
     
     # Let the channel know the matching is starting
-    await interaction.channel.send(f"{interaction.user.display_name} asked me to match groups of {per_group}! :partying_face:")
+    if not dry_run:
+        await interaction.channel.send(f"{interaction.user.display_name} asked me to match groups of {per_group}! :partying_face:")
 
     # Find all the members in the role
     matchees = list( m for m in interaction.channel.members if not m.bot and matchee_role in m.roles)
@@ -83,10 +84,18 @@ async def match(interaction: discord.Interaction, per_group: int = None):
 
     # Split members into groups and share them
     groups = [matchees[i::num_groups] for i in range(num_groups)]
+    group_msgs = []
     for idx, group in enumerate(groups):
         mentions = [m.mention for m in group]
         logger.info(f"Sending group: {list(m.name for m in group)}")
-        await interaction.channel.send(f"{util.get_ordinal(idx+1)} group: " + ", ".join(mentions))
+        group_msgs.append(f"{util.get_ordinal(idx+1)} group: " + ", ".join(mentions))
+
+    # Send the messages
+    if not dry_run:
+        for msg in group_msgs:
+            await interaction.channel.send(msg)
+    else:
+        await interaction.response.send_message("\n".join(group_msgs), ephemeral=True, silent=True)
     
     logger.info(f"Done")
     await interaction.response.send_message("Done :)", ephemeral=True, silent=True)
