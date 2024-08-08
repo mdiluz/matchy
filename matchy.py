@@ -1,23 +1,20 @@
 import discord
-import os
 import random
 from discord import app_commands
 from discord.ext import commands
-from config import TOKEN
+import config
 
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
-bot = commands.Bot(command_prefix='/', description="Matchy matches matchees", intents=intents)
+bot = commands.Bot(command_prefix='$', description="Matchy matches matchees", intents=intents)
 
 # Find a role by name
 def find_role_by_name(roles: list[discord.Role], name: str) -> discord.Role:
-    role = None
     for r in roles:
         if r.name == name:
-            role = r
-            break
-    return role
+            return r
+    return None
 
 # Get the ordinal for an int
 def get_ordinal(num : int):
@@ -35,23 +32,52 @@ def get_ordinal(num : int):
     else:
         return str(num)+'th'
 
+guilds = {}
+def sync_guilds():
+    # Cache the guild info
+    for guild in bot.guilds:
+        if guild.id in config.SERVERS:
+            guilds[guild.id] = { "guild" : guild }
+
+    # Grab the role info
+    for id in guilds:
+        guild = guilds[id]
+        guild["matchee"] = find_role_by_name(guild["guild"].roles, "Matchee")
+        guild["matcher"] = find_role_by_name(guild["guild"].roles, "Matcher") 
+
+    print(f"Synced {len(guilds)} guild(s)")
 
 @bot.event
 async def on_ready():
-    try:
-        synced = await bot.tree.sync()
-        print(f"Synced {len(synced)} command(s)")
-    except Exception as e:
-        print(e)
+    sync_guilds()
     print("Bot is Up and Ready!")
 
-@bot.tree.command()
-@app_commands.describe(per_group = "People per group")
+@bot.command()
+async def sync(ctx):
+    if ctx.author.id not in config.OWNERS:
+        print(f"User {ctx.author} unauthorised for sync")
+        return
+    
+    # Sync the commands
+    synced = await bot.tree.sync()
+    print(f"Synced {len(synced)} command(s)")
+    
+    sync_guilds()
+        
+
+@bot.tree.command(description = "Match matchees into groups")
+@app_commands.describe(per_group = "Matchees per group")
 async def match(interaction: discord.Interaction, per_group: int):
 
+    # Grab the guild
+    guild = guilds.get(interaction.guild.id, None)
+    if not guild:
+        await interaction.response.send_message("Server not registered :(", ephemeral=True)
+        return
+
     # Grab the roles
-    matchee = find_role_by_name(interaction.guild.roles, "Matchee")
-    matcher = find_role_by_name(interaction.guild.roles, "Matcher")
+    matchee = guild["matchee"]
+    matcher = guild["matcher"]
     if not matchee or not matcher:
         await interaction.response.send_message("Server has missing matchy roles :(", ephemeral=True)
         return
@@ -88,4 +114,4 @@ async def match(interaction: discord.Interaction, per_group: int):
 
     await interaction.response.send_message("Done :)", ephemeral=True, silent=True)
 
-bot.run(TOKEN)
+bot.run(config.TOKEN)
