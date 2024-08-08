@@ -19,6 +19,23 @@ def find_role_by_name(roles: list[discord.Role], name: str) -> discord.Role:
             break
     return role
 
+# Get the ordinal for an int
+def get_ordinal(num : int):
+    if num > 9:
+        secondToLastDigit = str(num)[-2]
+        if secondToLastDigit == '1':
+            return str(num)+'th'
+    lastDigit = num % 10
+    if (lastDigit == 1):
+        return str(num)+'st'
+    elif (lastDigit == 2):
+        return str(num)+'nd'
+    elif (lastDigit == 3):
+        return str(num)+'rd'
+    else:
+        return str(num)+'th'
+
+
 @bot.event
 async def on_ready():
     try:
@@ -43,6 +60,9 @@ async def match(interaction: discord.Interaction, per_group: int):
     if matcher not in interaction.user.roles:
         await interaction.response.send_message(f"You'll need the {matcher.mention} role to do this, sorry!", ephemeral=True)
         return
+    
+
+    await interaction.channel.send(f"{interaction.user.display_name} asked me to match groups of {per_group}! :partying_face:")
 
     # Find all the members in the role
     matchies = []
@@ -62,9 +82,9 @@ async def match(interaction: discord.Interaction, per_group: int):
 
     # Split members into groups and share them
     groups = [matchies[i::num_groups] for i in range(num_groups)]
-    for group in groups:
+    for idx, group in enumerate(groups):
         mentions = [m.mention for m in group]
-        await interaction.channel.send("Group : " + ", ".join(mentions))
+        await interaction.channel.send(f"{get_ordinal(idx+1)} group: " + ", ".join(mentions))
 
     await interaction.response.send_message("Done :)", ephemeral=True, silent=True)
 
