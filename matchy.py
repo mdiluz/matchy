@@ -4,7 +4,6 @@ import logging
 import importlib
 from discord import app_commands
 from discord.ext import commands
-import util
 # Config contains
 # TOKEN : str - Discord bot token
 # SERVERS : list[int] - ids of the servers to have commands active
@@ -47,7 +46,7 @@ async def sync(ctx: discord.ext.commands.context.Context):
     # Cache the guild information
     cache_guilds()
     await ctx.reply("Done!", ephemeral=True)
-        
+
 
 @bot.tree.command(description = "Match matchees into groups", guilds = list(g for g in guilds if g.id in config.SERVERS))
 @app_commands.describe(per_group = "Matchees per group (default 3+)", post = "Post to channel")
@@ -56,7 +55,7 @@ async def match(interaction: discord.Interaction, per_group: int = None, post: b
     """Match groups of channel members"""
     if not per_group:
         per_group = 3
-    
+
     logger.info(f"User {interaction.user} requested /match {per_group}")
 
     # Grab the roles
@@ -70,7 +69,7 @@ async def match(interaction: discord.Interaction, per_group: int = None, post: b
     if matcher_role not in interaction.user.roles:
         await interaction.response.send_message(f"You'll need the {matcher_role.mention} role to do this, sorry!", ephemeral=True)
         return
-    
+
     # Let the channel know the matching is starting
     if post:
         await interaction.channel.send(f"{interaction.user.display_name} asked me to match groups of {per_group}! :partying_face:")
@@ -92,9 +91,9 @@ async def match(interaction: discord.Interaction, per_group: int = None, post: b
     groups = [matchees[i::num_groups] for i in range(num_groups)]
     group_msgs = []
     for idx, group in enumerate(groups):
-        mentions = [m.mention for m in group]
+        mentions = ", ".join([m.mention for m in group])
         logger.info(f"Sending group: {list(m.name for m in group)}")
-        group_msgs.append(f"{util.get_ordinal(idx+1)} group: " + ", ".join(mentions))
+        group_msgs.append(f"Matched up {mentions}!")
 
     # Send the messages
     if post:
@@ -102,7 +101,7 @@ async def match(interaction: discord.Interaction, per_group: int = None, post: b
             await interaction.channel.send(msg)
     else:
         await interaction.response.send_message("\n".join(group_msgs), ephemeral=True, silent=True)
-    
+
     logger.info(f"Done")
     if post:
         await interaction.response.send_message("Done :)", ephemeral=True, silent=True)
