@@ -79,7 +79,7 @@ async def match(interaction: discord.Interaction, group_min: int = None, matchee
     groups = matchees_to_groups(matchees, group_min)
 
     # Post about all the groups with a button to send to the channel
-    msg = f"{'\n'.join(group_to_message(g) for g in groups)}"
+    msg = '\n'.join(group_to_message(g) for g in groups)
     if not matcher:  # Let a non-matcher know why they don't have the button
         msg += f"\nYou'll need the {matcher.mention if matcher else 'Matcher'}"
         msg += " role to send this to the channel, sorry!"
