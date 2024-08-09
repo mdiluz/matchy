@@ -47,6 +47,16 @@ async def sync(ctx: commands.Context):
     await msg.edit(content="Done!")
 
 
+@bot.command()
+@commands.dm_only()
+@commands.check(lambda ctx:  ctx.message.author.id in config.OWNERS)
+async def close(ctx: commands.Context):
+    """Handle restart command"""
+    await ctx.reply("Closing bot...", ephemeral=True)
+    logger.info("Closing down the bot")
+    await bot.close()
+
+
 @bot.tree.command(description="Match up matchees")
 @commands.guild_only()
 @app_commands.describe(group_min="Minimum matchees per match (defaults to 3)",
