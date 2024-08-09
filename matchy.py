@@ -10,7 +10,8 @@ from discord.ext import commands
 # Config contains
 # TOKEN : str - Discord bot token
 # OWNERS : list[int] - ids of owners able to use the owner commands
-import config
+if importlib.util.find_spec("config"):
+    import config
 
 logger = logging.getLogger("matchy")
 logger.setLevel(logging.INFO)
