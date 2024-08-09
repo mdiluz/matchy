@@ -1,4 +1,4 @@
-name: Python Lint
+name: Test
 
 on: [push]
 
@@ -21,3 +21,6 @@ jobs:
     - name: Analysing the code with flake8
       run: |
         flake8 --max-line-length 120 $(git ls-files '*.py')
+    - name: Run tests with pytest
+      run: |
+        pytest
