@@ -9,7 +9,6 @@ from discord import app_commands
 from discord.ext import commands
 # Config contains
 # TOKEN : str - Discord bot token
-# SERVERS : list[int] - ids of the servers to have commands active
 # OWNERS : list[int] - ids of owners able to use the owner commands
 import config
 
