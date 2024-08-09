@@ -66,31 +66,34 @@ async def match(interaction: discord.Interaction, group_min: int = None, matchee
         matchee_role = "Matchee"
 
     # Grab the roles and verify the given role
-    matcher_role = next(
-        (r for r in interaction.guild.roles if r.name == "Matcher"), None)
-    matchee_role = next(
-        (r for r in interaction.guild.roles if r.name == matchee_role), None)
-    if not matchee_role:
+    matcher = get_role_from_guild(interaction.guild, "Matcher")
+    matchee = get_role_from_guild(interaction.guild, matchee_role)
+    if not matchee:
         await interaction.response.send_message(f"Server is missing '{matchee_role}' role :(", ephemeral=True)
         return
-    matcher = matcher_role and matcher_role in interaction.user.roles
+    matcher = matcher and matcher in interaction.user.roles
 
     # Create our groups!
     matchees = list(
-        m for m in interaction.channel.members if matchee_role in m.roles)
+        m for m in interaction.channel.members if matchee in m.roles)
     groups = matchees_to_groups(matchees, group_min)
 
     # Post about all the groups with a button to send to the channel
     msg = f"{'\n'.join(group_to_message(g) for g in groups)}"
     if not matcher:  # Let a non-matcher know why they don't have the button
         msg += f"\nYou'll need the {
-            matcher_role.mention if matcher_role else 'Matcher'}"
+            matcher.mention if matcher else 'Matcher'}"
         msg += " role to send this to the channel, sorry!"
     await interaction.response.send_message(msg, ephemeral=True, silent=True,
                                             view=(GroupMessageButton(groups) if matcher else discord.utils.MISSING))
 
     logger.info("Done. Matched %s matchees into %s groups.",
                 len(matchees), len(groups))
+
+
+def get_role_from_guild(guild: discord.guild, role: str) -> discord.role:
+    """Find a role in a guild"""
+    return next((r for r in guild.roles if r.name == role), None)
 
 
 async def send_groups_to_channel(channel: discord.channel, groups: list[list[discord.Member]]):
