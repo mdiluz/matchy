@@ -35,18 +35,24 @@ async def on_ready():
 @bot.command()
 @commands.check(lambda ctx:  ctx.message.author.id in config.OWNERS)
 @commands.dm_only()
-async def sync(ctx: discord.ext.commands.context.Context):
+async def sync(ctx: commands.Context):
     """Handle sync command"""
+
     # Reload the config first
+    msg = await ctx.reply("Reloading config...", ephemeral=True)
     importlib.reload(config)
     logger.info(f"Reloaded config")
+
     # Sync the commands with the discord API
+    await msg.edit(content="Syncing...")
     synced = await bot.tree.sync()
     logger.info(f"Synced {len(synced)} command(s)")
-    # Cache the guild information
-    cache_guilds()
-    await ctx.reply("Done!", ephemeral=True)
 
+    # Cache the guild information
+    await msg.edit(content="Caching guilds...")
+    cache_guilds()
+
+    await msg.edit(content="Done!")
 
 @bot.tree.command(description = "Match matchees into groups", guilds = list(g for g in guilds if g.id in config.SERVERS))
 @app_commands.describe(per_group = "Matchees per group (default 3+)", post = "Post to channel")
