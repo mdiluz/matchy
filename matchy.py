@@ -55,9 +55,9 @@ async def sync(ctx: commands.Context):
     await msg.edit(content="Done!")
 
 @bot.tree.command(description = "Match matchees into groups", guilds = list(g for g in guilds if g.id in config.SERVERS))
-@app_commands.describe(per_group = "Matchees per group (default 3+)", post = "Post to channel")
+@app_commands.describe(per_group = "Matchees per group (default 3+)", post = "Post to channel", test_people = "Use example test matchees")
 @commands.guild_only()
-async def match(interaction: discord.Interaction, per_group: int = None, post: bool = None):
+async def match(interaction: discord.Interaction, per_group: int = None, post: bool = None, test_people: bool = False):
     """Match groups of channel members"""
     if not per_group:
         per_group = 3
@@ -78,10 +78,13 @@ async def match(interaction: discord.Interaction, per_group: int = None, post: b
 
     # Let the channel know the matching is starting
     if post:
-        await interaction.channel.send(f"{interaction.user.display_name} asked me to match groups of {per_group}! :partying_face:")
+        post = await interaction.channel.send(f"{interaction.user.display_name} asked me to match groups of {per_group}!")
 
     # Find all the members in the role
-    matchees = list( m for m in interaction.channel.members if not m.bot and matchee_role in m.roles)
+    if not test_people:
+        matchees = list( m for m in interaction.channel.members if not m.bot and matchee_role in m.roles)
+    else:
+        matchees = list( m for m in interaction.channel.members) # Test with everyone on the server
     logger.info(f"{len(matchees)} matchees found")
 
     # Shuffle the people for randomness
@@ -96,8 +99,12 @@ async def match(interaction: discord.Interaction, per_group: int = None, post: b
     # Split members into groups and share them
     groups = [matchees[i::num_groups] for i in range(num_groups)]
     group_msgs = []
-    for idx, group in enumerate(groups):
-        mentions = ", ".join([m.mention for m in group])
+    for group in groups:
+        mentions = [m.mention for m in group]
+        if len(group) > 1:
+            mentions = "{} and {}".format(', '.join(mentions[:-1]), mentions[-1])
+        else:
+            mentions = mentions[0]
         logger.info(f"Sending group: {list(m.name for m in group)}")
         group_msgs.append(f"Matched up {mentions}!")
 
@@ -105,12 +112,13 @@ async def match(interaction: discord.Interaction, per_group: int = None, post: b
     if post:
         for msg in group_msgs:
             await interaction.channel.send(msg)
+        await interaction.channel.send("That's all folks, happy matching and remember - DFTBA!")
+        await interaction.response.send_message("All done! :)", ephemeral=True, silent=True)
     else:
         await interaction.response.send_message("\n".join(group_msgs), ephemeral=True, silent=True)
-
+    
     logger.info(f"Done")
-    if post:
-        await interaction.response.send_message("Done :)", ephemeral=True, silent=True)
+        
 
 # Kick off the bot run cycle
 handler = logging.StreamHandler()
