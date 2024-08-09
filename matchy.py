@@ -10,116 +10,103 @@ from discord.ext import commands
 # OWNERS : list[int] - ids of owners able to use the owner commands
 import config
 
-# Set up a logger for matchy
 logger = logging.getLogger("matchy")
 logger.setLevel(logging.INFO)
 
-# Create the discord commands bot
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
 bot = commands.Bot(command_prefix='$', description="Matchy matches matchees", intents=intents)
 
-guilds = []
-def cache_guilds():
-    """Sync current bot guilds to a list to use"""
-    guilds = list(g for g in bot.guilds if g.id in config.SERVERS)
-    logger.info(f"Cached {len(guilds)} guild(s)")
-
 @bot.event
 async def on_ready():
-    """Cache some info once ready"""
-    cache_guilds()
+    """Bot is ready and connected"""
     logger.info("Bot is up and ready!")
+    activity = discord.Game("/match")
+    await bot.change_presence(status=discord.Status.online, activity=activity)
 
 @bot.command()
-@commands.check(lambda ctx:  ctx.message.author.id in config.OWNERS)
 @commands.dm_only()
+@commands.check(lambda ctx:  ctx.message.author.id in config.OWNERS)
 async def sync(ctx: commands.Context):
-    """Handle sync command"""
 
-    # Reload the config first
+    """Handle sync command"""
     msg = await ctx.reply("Reloading config...", ephemeral=True)
     importlib.reload(config)
     logger.info(f"Reloaded config")
 
-    # Sync the commands with the discord API
-    await msg.edit(content="Syncing...")
+    await msg.edit(content="Syncing commands...")
     synced = await bot.tree.sync()
     logger.info(f"Synced {len(synced)} command(s)")
 
-    # Cache the guild information
-    await msg.edit(content="Caching guilds...")
-    cache_guilds()
-
     await msg.edit(content="Done!")
 
-@bot.tree.command(description = "Match matchees into groups", guilds = list(g for g in guilds if g.id in config.SERVERS))
-@app_commands.describe(per_group = "Matchees per group (default 3+)", post = "Post to channel", test_people = "Use example test matchees")
+@bot.tree.command(description = "Match up matchees")
 @commands.guild_only()
-async def match(interaction: discord.Interaction, per_group: int = None, post: bool = None, test_people: bool = False):
+@app_commands.describe(group_min = "Minimum matchees per match (defaults to 3)", matchee_role = "Role for matchees (defaults to @Matchee)")
+async def match(interaction: discord.Interaction, group_min: int = None, matchee_role: str = None):
     """Match groups of channel members"""
-    if not per_group:
-        per_group = 3
-
-    logger.info(f"User {interaction.user} requested /match {per_group}")
-
-    # Grab the roles
-    matchee_role = next(r for r in interaction.guild.roles if r.name == "Matchee")
-    matcher_role = next(r for r in interaction.guild.roles if r.name == "Matcher")
-    if not matchee_role or not matcher_role:
-        await interaction.response.send_message("Server has missing matchy roles :(", ephemeral=True)
-        return
-
-    # Validate that the user has the scope we need
-    if matcher_role not in interaction.user.roles:
-        await interaction.response.send_message(f"You'll need the {matcher_role.mention} role to do this, sorry!", ephemeral=True)
-        return
-
-    # Let the channel know the matching is starting
-    if post:
-        post = await interaction.channel.send(f"{interaction.user.display_name} asked me to match groups of {per_group}!")
-
-    # Find all the members in the role
-    if not test_people:
-        matchees = list( m for m in interaction.channel.members if not m.bot and matchee_role in m.roles)
-    else:
-        matchees = list( m for m in interaction.channel.members) # Test with everyone on the server
-    logger.info(f"{len(matchees)} matchees found")
-
-    # Shuffle the people for randomness
-    random.shuffle(matchees)
-
-    # Calculate the number of groups to generate
-    total_num = len(matchees)
-    num_groups = max(total_num//per_group, 1)
-
-    logger.info(f"Creating {num_groups} groups")
-
-    # Split members into groups and share them
-    groups = [matchees[i::num_groups] for i in range(num_groups)]
-    group_msgs = []
-    for group in groups:
-        mentions = [m.mention for m in group]
-        if len(group) > 1:
-            mentions = "{} and {}".format(', '.join(mentions[:-1]), mentions[-1])
-        else:
-            mentions = mentions[0]
-        logger.info(f"Sending group: {list(m.name for m in group)}")
-        group_msgs.append(f"Matched up {mentions}!")
-
-    # Send the messages
-    if post:
-        for msg in group_msgs:
-            await interaction.channel.send(msg)
-        await interaction.channel.send("That's all folks, happy matching and remember - DFTBA!")
-        await interaction.response.send_message("All done! :)", ephemeral=True, silent=True)
-    else:
-        await interaction.response.send_message("\n".join(group_msgs), ephemeral=True, silent=True)
     
-    logger.info(f"Done")
-        
+    logger.info(f"User {interaction.user} from {interaction.guild.name} in #{interaction.channel.name} requested "
+               + f"'/match group_min={group_min} matchee_role={matchee_role}'")
 
-# Kick off the bot run cycle
+    # Sort out the defaults, if not specified they'll come in as None
+    if not group_min:
+        group_min = 3
+    if not matchee_role:
+        matchee_role = "Matchee"
+
+    # Grab the roles and verify the given role
+    matcher_role = next((r for r in interaction.guild.roles if r.name == "Matcher"), None)
+    matchee_role = next((r for r in interaction.guild.roles if r.name == matchee_role), None)
+    if not matchee_role:
+        await interaction.response.send_message(f"Server is missing '{matchee_role}' role :(", ephemeral=True)
+        return
+    matcher = matcher_role and matcher_role in interaction.user.roles
+
+    # Create our groups!
+    matchees = list(m for m in interaction.channel.members if matchee_role in m.roles)
+    groups = matchees_to_groups(matchees, group_min)
+    
+    # Post about all the groups with a button to send to the channel
+    msg = f"{'\n'.join(group_to_message(g) for g in groups)}"
+    if not matcher: # Let a non-matcher know why they don't have the button
+        msg += f"\nYou'll need the {matcher_role.mention if matcher_role else 'Matcher'} role to send this to the channel, sorry!"
+    await interaction.response.send_message(msg, ephemeral=True, silent=True, view=(GroupMessageButton(groups) if matcher else discord.utils.MISSING))
+    
+    logger.info(f"Done. Matched {len(matchees)} matchees into {len(groups)} groups.")
+
+async def send_groups_to_channel(channel : discord.channel, groups : list[list[discord.Member]]):
+    """Send the group messages to a channel"""
+    for msg in (group_to_message(g) for g in groups):
+        await channel.send(msg)
+    await channel.send("That's all folks, happy matching and remember - DFTBA!")
+
+class GroupMessageButton(discord.ui.View):
+    """A button to press to send the groups to the channel"""
+    def __init__(self, groups : list[list[discord.Member]], timeout : int = 180):
+        self.groups = groups
+        super().__init__(timeout=timeout)
+
+    @discord.ui.button(label="Send groups to channel", style=discord.ButtonStyle.green, emoji="📮")
+    async def send_to_channel(self, interaction:discord.Interaction, button: discord.ui.Button):
+        await send_groups_to_channel(interaction.channel, self.groups)
+        await interaction.response.edit_message(content=f"Groups sent to channel!", view=None)
+
+def matchees_to_groups(matchees : list[discord.Member], per_group : int) -> list[list[discord.Member]]:
+    """Generate the groups from the set of matchees"""
+    random.shuffle(matchees)
+    num_groups = max(len(matchees)//per_group, 1)
+    return [matchees[i::num_groups] for i in range(num_groups)]
+
+def group_to_message(group : list[discord.Member]) -> str:
+    """Get the message to send for each group"""
+    mentions = [m.mention for m in group]
+    if len(group) > 1:
+        mentions = "{} and {}".format(', '.join(mentions[:-1]), mentions[-1])
+    else:
+        mentions = mentions[0]
+    return f"Matched up {mentions}!"
+
 handler = logging.StreamHandler()
 bot.run(config.TOKEN, log_handler=handler, root_logger=True)
