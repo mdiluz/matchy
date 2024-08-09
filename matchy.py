@@ -1,6 +1,7 @@
 import discord
 import random
 import logging
+import importlib
 from discord import app_commands
 from discord.ext import commands
 import util
@@ -37,6 +38,9 @@ async def on_ready():
 @commands.dm_only()
 async def sync(ctx: discord.ext.commands.context.Context):
     """Handle sync command"""
+    # Reload the config first
+    importlib.reload(config)
+    logger.info(f"Reloaded config")
     # Sync the commands with the discord API
     synced = await bot.tree.sync()
     logger.info(f"Synced {len(synced)} command(s)")
