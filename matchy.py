@@ -134,5 +134,6 @@ def group_to_message(group: list[discord.Member]) -> str:
     return f"Matched up {mentions}!"
 
 
-handler = logging.StreamHandler()
-bot.run(config.TOKEN, log_handler=handler, root_logger=True)
+if __name__ == "__main__":
+    handler = logging.StreamHandler()
+    bot.run(config.TOKEN, log_handler=handler, root_logger=True)
