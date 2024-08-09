@@ -1,7 +1,10 @@
-import discord
+"""
+    matchy.py - Discord bot that matches people into groups
+"""
 import random
 import logging
 import importlib
+import discord
 from discord import app_commands
 from discord.ext import commands
 # Config contains
@@ -35,23 +38,26 @@ async def sync(ctx: commands.Context):
     """Handle sync command"""
     msg = await ctx.reply("Reloading config...", ephemeral=True)
     importlib.reload(config)
-    logger.info(f"Reloaded config")
+    logger.info("Reloaded config")
 
     await msg.edit(content="Syncing commands...")
     synced = await bot.tree.sync()
-    logger.info(f"Synced {len(synced)} command(s)")
+    logger.info("Synced %s command(s)", len(synced))
 
     await msg.edit(content="Done!")
 
 
 @bot.tree.command(description="Match up matchees")
 @commands.guild_only()
-@app_commands.describe(group_min="Minimum matchees per match (defaults to 3)", matchee_role="Role for matchees (defaults to @Matchee)")
+@app_commands.describe(group_min="Minimum matchees per match (defaults to 3)",
+                       matchee_role="Role for matchees (defaults to @Matchee)")
 async def match(interaction: discord.Interaction, group_min: int = None, matchee_role: str = None):
     """Match groups of channel members"""
 
-    logger.info(f"User {interaction.user} from {interaction.guild.name} in #{interaction.channel.name} requested "
-                + f"'/match group_min={group_min} matchee_role={matchee_role}'")
+    logger.info("Handling request '/match group_min=%s matchee_role=%s'",
+                group_min, matchee_role)
+    logger.info("User %s from %s in #%s", interaction.user,
+                interaction.guild.name, interaction.channel.name)
 
     # Sort out the defaults, if not specified they'll come in as None
     if not group_min:
@@ -78,11 +84,13 @@ async def match(interaction: discord.Interaction, group_min: int = None, matchee
     msg = f"{'\n'.join(group_to_message(g) for g in groups)}"
     if not matcher:  # Let a non-matcher know why they don't have the button
         msg += f"\nYou'll need the {
-            matcher_role.mention if matcher_role else 'Matcher'} role to send this to the channel, sorry!"
-    await interaction.response.send_message(msg, ephemeral=True, silent=True, view=(GroupMessageButton(groups) if matcher else discord.utils.MISSING))
+            matcher_role.mention if matcher_role else 'Matcher'}"
+        msg += " role to send this to the channel, sorry!"
+    await interaction.response.send_message(msg, ephemeral=True, silent=True,
+                                            view=(GroupMessageButton(groups) if matcher else discord.utils.MISSING))
 
-    logger.info(f"Done. Matched {len(matchees)} matchees into {
-                len(groups)} groups.")
+    logger.info("Done. Matched %s matchees into %s groups.",
+                len(matchees), len(groups))
 
 
 async def send_groups_to_channel(channel: discord.channel, groups: list[list[discord.Member]]):
@@ -100,12 +108,14 @@ class GroupMessageButton(discord.ui.View):
         super().__init__(timeout=timeout)
 
     @discord.ui.button(label="Send groups to channel", style=discord.ButtonStyle.green, emoji="📮")
-    async def send_to_channel(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def send_to_channel(self, interaction: discord.Interaction, _button: discord.ui.Button):
+        """Send the groups to the channel with the button is pressed"""
         await send_groups_to_channel(interaction.channel, self.groups)
-        await interaction.response.edit_message(content=f"Groups sent to channel!", view=None)
+        await interaction.response.edit_message(content="Groups sent to channel!", view=None)
 
 
-def matchees_to_groups(matchees: list[discord.Member], per_group: int) -> list[list[discord.Member]]:
+def matchees_to_groups(matchees: list[discord.Member],
+                       per_group: int) -> list[list[discord.Member]]:
     """Generate the groups from the set of matchees"""
     random.shuffle(matchees)
     num_groups = max(len(matchees)//per_group, 1)
@@ -116,7 +126,7 @@ def group_to_message(group: list[discord.Member]) -> str:
     """Get the message to send for each group"""
     mentions = [m.mention for m in group]
     if len(group) > 1:
-        mentions = "{} and {}".format(', '.join(mentions[:-1]), mentions[-1])
+        mentions = f"{', '.join(mentions[:-1])} and {mentions[-1]}"
     else:
         mentions = mentions[0]
     return f"Matched up {mentions}!"
