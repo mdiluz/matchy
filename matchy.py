@@ -67,11 +67,11 @@ async def match(interaction: discord.Interaction, group_min: int = None, matchee
 
     # Grab the roles and verify the given role
     matcher = get_role_from_guild(interaction.guild, "Matcher")
+    matcher = matcher and matcher in interaction.user.roles
     matchee = get_role_from_guild(interaction.guild, matchee_role)
     if not matchee:
         await interaction.response.send_message(f"Server is missing '{matchee_role}' role :(", ephemeral=True)
         return
-    matcher = matcher and matcher in interaction.user.roles
 
     # Create our groups!
     matchees = list(
@@ -81,8 +81,7 @@ async def match(interaction: discord.Interaction, group_min: int = None, matchee
     # Post about all the groups with a button to send to the channel
     msg = f"{'\n'.join(group_to_message(g) for g in groups)}"
     if not matcher:  # Let a non-matcher know why they don't have the button
-        msg += f"\nYou'll need the {
-            matcher.mention if matcher else 'Matcher'}"
+        msg += f"\nYou'll need the {matcher.mention if matcher else 'Matcher'}"
         msg += " role to send this to the channel, sorry!"
     await interaction.response.send_message(msg, ephemeral=True, silent=True,
                                             view=(GroupMessageButton(groups) if matcher else discord.utils.MISSING))
