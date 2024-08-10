@@ -10,6 +10,8 @@ jobs:
         python-version: ["3.11"]
     steps:
     - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
       with:
@@ -29,6 +31,5 @@ jobs:
       run: |
         git fetch origin
         git checkout -b release origin/release
-        git pull
         git merge --no-ff origin/main
         git push origin release
