@@ -91,7 +91,7 @@ async def match(interaction: discord.Interaction, group_min: int = None, matchee
     # Create our groups!
     matchees = list(
         m for m in interaction.channel.members if matchee in m.roles)
-    groups = matching.members_to_groups(matchees, History, group_min)
+    groups = matching.members_to_groups(matchees, History, group_min, allow_fallback=True)
 
     # Post about all the groups with a button to send to the channel
     msg = '\n'.join(matching.group_to_message(g) for g in groups)

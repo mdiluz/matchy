@@ -14,10 +14,21 @@ def test_protocols():
     assert isinstance(discord.Member, matching.Member)
     assert isinstance(discord.Guild, matching.Guild)
     assert isinstance(discord.Role, matching.Role)
+    assert isinstance(Member, matching.Member)
+    # assert isinstance(Role, matching.Role)
+
+
+class Role():
+    def __init__(self, id: int):
+        self._id = id
+
+    @property
+    def id(self) -> int:
+        return self._id
 
 
 class Member():
-    def __init__(self, id: int):
+    def __init__(self, id: int, roles: list[Role] = []):
         self._id = id
 
     @property
@@ -25,12 +36,12 @@ class Member():
         return f"<@{self._id}>"
 
     @property
+    def roles(self) -> list[Role]:
+        return []
+
+    @property
     def id(self) -> int:
         return self._id
-
-    @id.setter
-    def id(self, value):
-        self._id = value
 
 
 def inner_validate_members_to_groups(matchees: list[Member], hist: history.History, per_group: int):
@@ -67,7 +78,7 @@ def inner_validate_members_to_groups(matchees: list[Member], hist: history.Histo
     ([Member(1)] * 12, 5),
     ([Member(1)] * 11, 2),
     ([Member(1)] * 356, 8),
-])
+], ids=['single', "larger_groups", "100_members", "5_group", "pairs", "356_big_groups"])
 def test_members_to_groups_no_history(matchees, per_group):
     """Test simple group matching works"""
     hist = history.History()
@@ -116,25 +127,33 @@ def items_found_in_lists(list_of_lists, items):
             {
                 "ts": datetime.now() - timedelta(days=1),
                 "groups": [
-                    [Member(1), Member(2), Member(3)],
-                    [Member(4), Member(5), Member(6)],
+                    [
+                        Member(1),
+                        Member(2),
+                        Member(3)
+                    ],
+                    [
+                        Member(4),
+                        Member(5),
+                        Member(6)
+                    ],
                 ]
             }
         ],
         [
-            Member(1),
-            Member(2),
-            Member(3),
-            Member(4),
-            Member(5),
-            Member(6),
+            Member(1, [Role(1), Role(2), Role(3), Role(4)]),
+            Member(2, [Role(1), Role(2), Role(3), Role(4)]),
+            Member(3, [Role(1), Role(2), Role(3), Role(4)]),
+            Member(4, [Role(1), Role(2), Role(3), Role(4)]),
+            Member(5, [Role(1), Role(2), Role(3), Role(4)]),
+            Member(6, [Role(1), Role(2), Role(3), Role(4)]),
         ],
         3,
         [
             # Nothing specific to validate
         ]
     ),
-])
+], ids=['simple_history', 'fallback'])
 def test_members_to_groups_with_history(history_data, matchees, per_group, checks):
     """Test more advanced group matching works"""
     hist = history.History()
@@ -159,10 +178,9 @@ def test_members_to_groups_stress_test():
     # Slowly ramp up the group size
     for per_group in range(2, 6):
 
-        # Slowly ramp a randomized shuffled list of members
+        # Slowly ramp a randomized shuffled list of members with randomised roles
         for num_members in range(1, 5):
-            # up to 50 total members
-            matchees = list(Member(i)
+            matchees = list(Member(i, list(Role(i) for i in range(1, rand.randint(2, num_members*2 + 1))))
                             for i in range(1, rand.randint(2, num_members*10 + 1)))
             rand.shuffle(matchees)
 

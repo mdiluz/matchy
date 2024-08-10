@@ -28,6 +28,5 @@ User IDs can be grabbed by turning on Discord's developer mode and right clickin
 
 ## TODO
 * Write bot tests with [dpytest](https://dpytest.readthedocs.io/en/latest/tutorials/getting_started.html)
-* Add matching based on unique rolls?
 * Add scheduling functionality
 * Improve the weirdo
