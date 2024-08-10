@@ -1,6 +1,8 @@
 # Matchy
 Matchy matches matchees.
 
+![Tests](https://github.com/mdiluz/matchy/actions/workflows/test.yml/badge.svg)
+
 Matchy is a Discord bot that groups up users for fun and vibes. Matchy can be installed by clicking [here](https://discord.com/oauth2/authorize?client_id=1270849346987884696).
 
 ## Commands
