@@ -1,6 +1,6 @@
 """Very simple config loading library"""
 from schema import Schema, And, Use
-import matching
+import files
 
 FILE = "config.json"
 
@@ -24,7 +24,7 @@ class Config():
 
 def load() -> Config:
     """Load the config and validate it"""
-    config = matching.load(FILE)
+    config = files.load(FILE)
     Schema(
         {
             # Discord bot token

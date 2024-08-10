@@ -3,7 +3,7 @@ import os
 import time
 from schema import Schema, And, Use, Optional
 from typing import Protocol
-import matching
+import files
 
 FILE = "history.json"
 
@@ -28,7 +28,7 @@ class History():
 
     def save(self) -> None:
         """Save out the history"""
-        matching.save(FILE, self.__dict__)
+        files.save(FILE, self.__dict__)
 
     def save_groups_to_history(self, groups: list[list[Member]]) -> None:
         """Save out the groups to the history file"""
@@ -51,7 +51,7 @@ class History():
 
 def load() -> History:
     """Load the history and validate it"""
-    history = matching.load(FILE) if os.path.isfile(FILE) else {
+    history = files.load(FILE) if os.path.isfile(FILE) else {
         "groups": [],
         "matchees": {}
     }

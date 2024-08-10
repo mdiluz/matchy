@@ -14,7 +14,7 @@ import matching
 ])
 def test_matchees_to_groups(matchees, per_group):
     """Test simple group matching works"""
-    groups = matching.objects_to_groups(matchees, per_group)
+    groups = matching.members_to_groups(matchees, per_group)
     for group in groups:
         # Ensure the group contains the right number of members
         assert len(group) >= per_group

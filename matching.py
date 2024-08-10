@@ -1,23 +1,16 @@
 """Utility functions for matchy"""
-import json
 import random
 from typing import Protocol
 
 
-def load(file: str) -> dict:
-    """Load a json file directly as a dict"""
-    with open(file) as f:
-        return json.load(f)
+class Member(Protocol):
+    @property
+    def id(self) -> int:
+        pass
 
 
-def save(file: str, content: dict):
-    """Save out a content dictionary to a file"""
-    with open(file, "w") as f:
-        json.dump(content, f, indent=4)
-
-
-def objects_to_groups(matchees: list[object],
-                      per_group: int) -> list[list[object]]:
+def members_to_groups(matchees: list[Member],
+                      per_group: int) -> list[list[Member]]:
     """Generate the groups from the set of matchees"""
     random.shuffle(matchees)
     num_groups = max(len(matchees)//per_group, 1)
