@@ -157,7 +157,7 @@ def test_members_to_groups_stress_test():
     rand = random.Random(123)
 
     # Slowly ramp up the group size
-    for per_group in range(1, 5):
+    for per_group in range(2, 6):
 
         # Slowly ramp a randomized shuffled list of members
         for num_members in range(1, 5):
