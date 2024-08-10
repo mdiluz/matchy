@@ -120,7 +120,8 @@ def members_to_groups(matchees: list[Member],
         groups = attempt_create_groups(
             matchees, hist, oldest_relevant_datetime, num_groups)
 
-        if groups:
+        # Fail the match if our groups aren't big enough
+        if groups and all(len(g) > per_group for g in groups):
             logger.info("Matched groups after %s attempt(s)", attempts)
             return groups
 
