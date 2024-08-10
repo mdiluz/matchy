@@ -4,5 +4,6 @@ set -e
 
 while python matchy.py
 do
-    git pull
+    git fetch
+    git checkout validated
 done
