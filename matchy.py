@@ -2,16 +2,44 @@
     matchy.py - Discord bot that matches people into groups
 """
 import logging
-import importlib
+import os.path
+import time
 import discord
 from discord import app_commands
 from discord.ext import commands
+from schema import Schema, And, Use, Optional
 import matching
 
-# Config contains
-# TOKEN : str - Discord bot token
-# OWNERS : list[int] - ids of owners able to use the owner commands
-config = matching.load_config()
+
+CONFIG = "config.json"
+config = matching.load(CONFIG)
+Schema(
+    {
+        # Discord bot token
+        "token": And(Use(str)),
+
+        # ids of owners authorised to use owner-only commands
+        "owners": And(Use(list[int])),
+    }
+).validate(config)
+
+# History format:
+HISTORY = "history.json"
+history = matching.load(HISTORY) if os.path.isfile(HISTORY) else {
+    "groups": []
+}
+Schema(
+    {
+        Optional("groups"): [
+            {
+                "ts": And(Use(str)),
+                "members": [
+                    And(Use(int))
+                ]
+            }
+        ]
+    }
+).validate(history)
 
 logger = logging.getLogger("matchy")
 logger.setLevel(logging.INFO)
@@ -31,13 +59,19 @@ async def on_ready():
     await bot.change_presence(status=discord.Status.online, activity=activity)
 
 
+def owner_only(ctx: commands.Context) -> bool:
+    """Checks the author is an owner"""
+    return ctx.message.author.id in config["owners"]
+
+
 @bot.command()
 @commands.dm_only()
-@commands.check(lambda ctx:  ctx.message.author.id in config["OWNERS"])
+@commands.check(owner_only)
 async def sync(ctx: commands.Context):
     """Handle sync command"""
     msg = await ctx.reply("Reloading config...", ephemeral=True)
-    importlib.reload(config)
+    global config
+    config = matching.load(CONFIG)
     logger.info("Reloaded config")
 
     await msg.edit(content="Syncing commands...")
@@ -49,7 +83,7 @@ async def sync(ctx: commands.Context):
 
 @bot.command()
 @commands.dm_only()
-@commands.check(lambda ctx:  ctx.message.author.id in config["OWNERS"])
+@commands.check(owner_only)
 async def close(ctx: commands.Context):
     """Handle restart command"""
     await ctx.reply("Closing bot...", ephemeral=True)
@@ -115,7 +149,16 @@ class GroupMessageButton(discord.ui.View):
         await interaction.channel.send("That's all folks, happy matching and remember - DFTBA!")
         await interaction.response.edit_message(content="Groups sent to channel!", view=None)
 
+        ts = time.time()
+        for group in self.groups:
+            history["groups"].append({
+                "ts": ts,
+                "members": list(m.id for m in group)
+            })
+        matching.save(HISTORY, history)
+
 
 if __name__ == "__main__":
     handler = logging.StreamHandler()
-    bot.run(config["TOKEN"], log_handler=handler, root_logger=True)
+    bot.run(config["token"], log_handler=handler, root_logger=True)
+    matching.save(HISTORY, history)

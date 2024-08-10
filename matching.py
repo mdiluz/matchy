@@ -3,8 +3,6 @@ import json
 import random
 from typing import Protocol
 
-CONFIG = "config.json"
-
 
 def load(file: str) -> dict:
     """Load a json file directly as a dict"""
@@ -12,9 +10,10 @@ def load(file: str) -> dict:
         return json.load(f)
 
 
-def load_config() -> dict:
-    """Load the current config into a dict"""
-    return load(CONFIG)
+def save(file: str, content: dict):
+    """Save out a content dictionary to a file"""
+    with open(file, "w") as f:
+        json.dump(content, f, indent=4)
 
 
 def objects_to_groups(matchees: list[object],
