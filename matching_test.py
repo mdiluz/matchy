@@ -3,7 +3,7 @@
 """
 import discord
 import pytest
-import matchy
+import matching
 
 
 @pytest.mark.parametrize("matchees, per_group", [
@@ -14,7 +14,7 @@ import matchy
 ])
 def test_matchees_to_groups(matchees, per_group):
     """Test simple group matching works"""
-    groups = matchy.matchees_to_groups(matchees, per_group)
+    groups = matching.objects_to_groups(matchees, per_group)
     for group in groups:
         # Ensure the group contains the right number of members
         assert len(group) >= per_group
