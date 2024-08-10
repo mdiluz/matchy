@@ -29,5 +29,6 @@ jobs:
       run: |
         git fetch origin
         git checkout -b release origin/release
+        git pull
         git merge --no-ff origin/main
         git push origin release
