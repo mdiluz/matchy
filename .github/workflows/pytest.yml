@@ -26,5 +26,5 @@ jobs:
         pytest
     - name: Apply validated tag
       run: |
-        git tag -f validated 
-        git push origin --tags
+        git tag validated 
+        git push origin -f --tags
