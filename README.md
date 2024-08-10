@@ -14,6 +14,7 @@ Only usable by `OWNER` users, reloads the config and syncs commands. Only usable
 * `python3` obviously
 * `discord.py` python module
 * `pytest` for testing
+* `schema` python module for file validation
 
 ## Config
 Matchy is configured by a `config.py` file that takes this format:
