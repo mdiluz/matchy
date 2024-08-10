@@ -2,11 +2,22 @@
 from schema import Schema, And, Use
 import files
 
-FILE = "config.json"
+_FILE = "config.json"
+_SCHEMA = Schema(
+    {
+        # Discord bot token
+        "token": And(Use(str)),
+
+        # ids of owners authorised to use owner-only commands
+        "owners": And(Use(list[int])),
+    }
+)
 
 
 class Config():
     def __init__(self, data: dict):
+        """Initialise and validate the config"""
+        _SCHEMA.validate(data)
         self.__dict__ = data
 
     @property
@@ -16,23 +27,12 @@ class Config():
     @property
     def owners(self) -> list[int]:
         return self.__dict__["owners"]
-    
+
     def reload(self) -> None:
         """Reload the config back into the dict"""
         self.__dict__ = load().__dict__
 
 
 def load() -> Config:
-    """Load the config and validate it"""
-    config = files.load(FILE)
-    Schema(
-        {
-            # Discord bot token
-            "token": And(Use(str)),
-
-            # ids of owners authorised to use owner-only commands
-            "owners": And(Use(list[int])),
-        }
-    ).validate(config)
-
-    return Config(config)
+    """Load the config"""
+    return Config(files.load(_FILE))

@@ -1,5 +1,6 @@
 """File operation helpers"""
 import json
+import shutil
 
 
 def load(file: str) -> dict:
@@ -9,6 +10,11 @@ def load(file: str) -> dict:
 
 
 def save(file: str, content: dict):
-    """Save out a content dictionary to a file"""
-    with open(file, "w") as f:
+    """
+    Save out a content dictionary to a file
+    Stores it in an intermediary file first incase the dump fails
+    """
+    intermediate = file + ".nxt"
+    with open(intermediate, "w") as f:
         json.dump(content, f, indent=4)
+    shutil.move(intermediate, file)
