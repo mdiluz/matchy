@@ -24,3 +24,10 @@ jobs:
     - name: Run tests with pytest
       run: |
         pytest
+    - name: Update release branch
+      if: github.ref == 'refs/heads/main'
+      run: |
+        git fetch origin
+        git checkout -b release
+        git merge --no-ff origin/${{ github.head_commit.id }}
+        git push origin release
