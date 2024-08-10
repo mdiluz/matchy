@@ -29,5 +29,5 @@ jobs:
       run: |
         git fetch origin
         git checkout -b release
-        git merge --no-ff origin/${{ github.head_commit.id }}
+        git merge --no-ff origin/${{ github.ref }}
         git push origin release
