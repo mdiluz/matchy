@@ -2,7 +2,6 @@
     matchy.py - Discord bot that matches people into groups
 """
 import logging
-import time
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -43,8 +42,7 @@ def owner_only(ctx: commands.Context) -> bool:
 async def sync(ctx: commands.Context):
     """Handle sync command"""
     msg = await ctx.reply("Reloading config...", ephemeral=True)
-    global config
-    config = matching.load(Config)
+    Config.reload()
     logger.info("Reloaded config")
 
     await msg.edit(content="Syncing commands...")
@@ -121,25 +119,7 @@ class GroupMessageButton(discord.ui.View):
             await interaction.channel.send(msg)
         await interaction.channel.send("That's all folks, happy matching and remember - DFTBA!")
         await interaction.response.edit_message(content="Groups sent to channel!", view=None)
-        save_groups_to_history(self.groups)
-
-
-def save_groups_to_history(groups: list[list[discord.Member]]) -> None:
-    ts = time.time()
-    for group in groups:
-        # Add the group
-        History.groups.append({
-            "ts": ts,
-            "matchees": list(m.id for m in group)
-        })
-        # Add the matches to the matchee's daya
-        for m in group:
-            matchee = History.matchees.get(str(m.id), {"matches": []})
-            for o in (o for o in group if o.id != m.id):
-                matchee["matches"].append({"ts": ts, "id": o.id})
-            History.matchees[m.id] = matchee
-
-    History.save()
+        History.save_groups_to_history(self.groups)
 
 
 if __name__ == "__main__":

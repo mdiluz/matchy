@@ -2,7 +2,7 @@
 from schema import Schema, And, Use
 import matching
 
-CONFIG = "config.json"
+FILE = "config.json"
 
 
 class Config():
@@ -16,11 +16,15 @@ class Config():
     @property
     def owners(self) -> list[int]:
         return self.__dict__["owners"]
+    
+    def reload(self) -> None:
+        """Reload the config back into the dict"""
+        self.__dict__ = load().__dict__
 
 
 def load() -> Config:
     """Load the config and validate it"""
-    config = matching.load(CONFIG)
+    config = matching.load(FILE)
     Schema(
         {
             # Discord bot token
