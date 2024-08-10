@@ -6,13 +6,10 @@ import history
 
 
 # Number of days to step forward from the start of history for each match attempt
-_ATTEMPT_RELEVANCY_STEP = timedelta(days=7)
+_ATTEMPT_RELEVANCY_TIMESTEP = timedelta(days=7)
 
 # Attempts for each of those time periods
-_ATTEMPTS_PER_TIME = 3
-
-# Mamum attempts worth taking
-_MAX_ATTEMPTS = _ATTEMPTS_PER_TIME*10
+_ATTEMPTS_PER_TIMESTEP = 3
 
 logger = logging.getLogger("matching")
 logger.setLevel(logging.INFO)
@@ -102,10 +99,9 @@ def attempt_create_groups(matchees: list[Member],
 
 def members_to_groups(matchees: list[Member],
                       hist: history.History = history.History(),
-                      per_group: int = 3, max_attempts: int = _MAX_ATTEMPTS) -> list[list[Member]]:
+                      per_group: int = 3) -> list[list[Member]]:
     """Generate the groups from the set of matchees"""
     num_groups = max(len(matchees)//per_group, 1)
-    attempts = max_attempts
 
     # Only both with the complicated matching if we have a history
     # TODO: When matching takes into account more than history this should change
@@ -117,28 +113,27 @@ def members_to_groups(matchees: list[Member],
     oldest_relevant_datetime = hist.oldest()
 
     # Loop until we find a valid set of groups
-    while attempts:
-        attempts -= 1
+    attempts = 0
+    while True:
+        attempts += 1
 
         groups = attempt_create_groups(
             matchees, hist, oldest_relevant_datetime, num_groups)
 
         if groups:
-            logger.info("Matched groups after %s attempt(s)",
-                        _MAX_ATTEMPTS - attempts)
+            logger.info("Matched groups after %s attempt(s)", attempts)
             return groups
 
         # In case we still don't have groups we should progress and
         # walk the oldest relevant timestamp forward a week
-        # Stop bothering if we've gone beyond today
-        if attempts % _ATTEMPTS_PER_TIME == 0:
-            oldest_relevant_datetime += _ATTEMPT_RELEVANCY_STEP
+        # Stop bothering when we finally go beyond today
+        if attempts % _ATTEMPTS_PER_TIMESTEP == 0:
+            oldest_relevant_datetime += _ATTEMPT_RELEVANCY_TIMESTEP
             if oldest_relevant_datetime > datetime.now():
                 break
 
     # If we've still failed, just use the simple method
-    logger.info("Fell back to simple groups after %s attempt(s)",
-                _MAX_ATTEMPTS - attempts)
+    logger.info("Fell back to simple groups after %s attempt(s)", attempts)
     return members_to_groups_simple(matchees, num_groups)
 
 
