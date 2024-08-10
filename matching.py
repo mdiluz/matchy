@@ -112,7 +112,7 @@ def attempt_create_groups(matchees: list[Member],
         # Progressing through the groups like this ensures we slowly fill them up with compatible people
         scores: list[tuple[int, int]] = []
         for group in groups:
-                
+
             score = get_member_group_eligibility_score(
                 matchee, group, relevant_matches, num_groups)
 
@@ -159,7 +159,7 @@ def members_to_groups(matchees: list[Member],
 
         # Have a few attempts before stepping forward in time
         for _ in range(_ATTEMPTS_PER_TIMESTEP):
-                
+
             rand.shuffle(matchees)  # Shuffle the matchees each attempt
 
             attempts += 1
