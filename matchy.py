@@ -2,56 +2,17 @@
     matchy.py - Discord bot that matches people into groups
 """
 import logging
-import os.path
 import time
 import discord
 from discord import app_commands
 from discord.ext import commands
-from schema import Schema, And, Use, Optional
 import matching
+import history
+import config
 
 
-CONFIG = "config.json"
-config = matching.load(CONFIG)
-Schema(
-    {
-        # Discord bot token
-        "token": And(Use(str)),
-
-        # ids of owners authorised to use owner-only commands
-        "owners": And(Use(list[int])),
-    }
-).validate(config)
-
-# History format:
-HISTORY = "history.json"
-history = matching.load(HISTORY) if os.path.isfile(HISTORY) else {
-    "groups": [],
-    "matchees": {}
-}
-Schema(
-    {
-        Optional("groups"): [
-            {
-                "ts": And(Use(str)),
-                "matchees": [
-                    And(Use(int))
-                ]
-            }
-        ],
-        Optional("matchees"): {
-            Optional(str): {
-                "matches": [
-                    {
-                        "ts": And(Use(str)),
-                        "id": And(Use(int)),
-                    }
-                ]
-            }
-
-        }
-    }
-).validate(history)
+Config = config.load()
+History = history.load()
 
 logger = logging.getLogger("matchy")
 logger.setLevel(logging.INFO)
@@ -73,7 +34,7 @@ async def on_ready():
 
 def owner_only(ctx: commands.Context) -> bool:
     """Checks the author is an owner"""
-    return ctx.message.author.id in config["owners"]
+    return ctx.message.author.id in Config.owners
 
 
 @bot.command()
@@ -83,7 +44,7 @@ async def sync(ctx: commands.Context):
     """Handle sync command"""
     msg = await ctx.reply("Reloading config...", ephemeral=True)
     global config
-    config = matching.load(CONFIG)
+    config = matching.load(Config)
     logger.info("Reloaded config")
 
     await msg.edit(content="Syncing commands...")
@@ -167,21 +128,20 @@ def save_groups_to_history(groups: list[list[discord.Member]]) -> None:
     ts = time.time()
     for group in groups:
         # Add the group
-        history["groups"].append({
+        History.groups.append({
             "ts": ts,
             "matchees": list(m.id for m in group)
         })
         # Add the matches to the matchee's daya
         for m in group:
-            matchee = history["matchees"].get(str(m.id), {"matches": []})
+            matchee = History.matchees.get(str(m.id), {"matches": []})
             for o in (o for o in group if o.id != m.id):
                 matchee["matches"].append({"ts": ts, "id": o.id})
-            history["matchees"][m.id] = matchee
+            History.matchees[m.id] = matchee
 
-    matching.save(HISTORY, history)
+    History.save()
 
 
 if __name__ == "__main__":
     handler = logging.StreamHandler()
-    bot.run(config["token"], log_handler=handler, root_logger=True)
-    matching.save(HISTORY, history)
+    bot.run(Config.token, log_handler=handler, root_logger=True)
