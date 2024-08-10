@@ -26,18 +26,30 @@ Schema(
 # History format:
 HISTORY = "history.json"
 history = matching.load(HISTORY) if os.path.isfile(HISTORY) else {
-    "groups": []
+    "groups": [],
+    "matchees": {}
 }
 Schema(
     {
         Optional("groups"): [
             {
                 "ts": And(Use(str)),
-                "members": [
+                "matchees": [
                     And(Use(int))
                 ]
             }
-        ]
+        ],
+        Optional("matchees"): {
+            Optional(str): {
+                "matches": [
+                    {
+                        "ts": And(Use(str)),
+                        "id": And(Use(int)),
+                    }
+                ]
+            }
+
+        }
     }
 ).validate(history)
 
@@ -142,20 +154,31 @@ class GroupMessageButton(discord.ui.View):
         super().__init__(timeout=timeout)
 
     @discord.ui.button(label="Send groups to channel", style=discord.ButtonStyle.green, emoji="📮")
-    async def send_to_channel(self, interaction: discord.Interaction, _button: discord.ui.Button):
+    async def send_to_channel(self, interaction: discord.Interaction, _button: discord.ui.Button) -> None:
         """Send the groups to the channel with the button is pressed"""
         for msg in (matching.group_to_message(g) for g in self.groups):
             await interaction.channel.send(msg)
         await interaction.channel.send("That's all folks, happy matching and remember - DFTBA!")
         await interaction.response.edit_message(content="Groups sent to channel!", view=None)
+        save_groups_to_history(self.groups)
 
-        ts = time.time()
-        for group in self.groups:
-            history["groups"].append({
-                "ts": ts,
-                "members": list(m.id for m in group)
-            })
-        matching.save(HISTORY, history)
+
+def save_groups_to_history(groups: list[list[discord.Member]]) -> None:
+    ts = time.time()
+    for group in groups:
+        # Add the group
+        history["groups"].append({
+            "ts": ts,
+            "matchees": list(m.id for m in group)
+        })
+        # Add the matches to the matchee's daya
+        for m in group:
+            matchee = history["matchees"].get(str(m.id), {"matches": []})
+            for o in (o for o in group if o.id != m.id):
+                matchee["matches"].append({"ts": ts, "id": o.id})
+            history["matchees"][m.id] = matchee
+
+    matching.save(HISTORY, history)
 
 
 if __name__ == "__main__":
