@@ -28,6 +28,6 @@ jobs:
       if: github.ref == 'refs/heads/main'
       run: |
         git fetch origin
-        git checkout -b release
+        git checkout -b release origin/release
         git merge --no-ff origin/main
         git push origin release
