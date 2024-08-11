@@ -14,12 +14,7 @@ Only usable by `OWNER` users, reloads the config and syncs commands, or closes d
 
 ## Dependencies
 * `python3` - Obviously
-
-### Python modules
-* `discord.py` - Discord bot functionality
-* `pytest` - Testing
-* `schema` - File format validation
-* `pytest-cov` - Code coverage testing
+* `venv` - Used for the python virtual env, specs in `requirements.txt`
 
 ## Config
 Matchy is configured by a `config.json` file that takes this format:
