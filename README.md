@@ -20,18 +20,16 @@ Only usable by `OWNER` users, reloads the config and syncs commands, or closes d
 Matchy is configured by a `config.json` file that takes this format:
 ```
 {
+    "version": 1,
     "token": "<<github bot token>>",
-    "owners": [
-        <<owner id>>
-    ]
 }
 ```
 User IDs can be grabbed by turning on Discord's developer mode and right clicking on a user.
 
 ## TODO
 * Write bot tests with [dpytest](https://dpytest.readthedocs.io/en/latest/tutorials/getting_started.html)
+* Implement /pause to pause a user for a little while
+* Move more constants to the config
 * Add scheduling functionality
-* Version the config and history files
-* Implement /signup rather than using roles
-* Implement authorisation scopes instead of just OWNER values
+* Fix logging in some sub files
 * Improve the weirdo

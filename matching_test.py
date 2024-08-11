@@ -1,5 +1,5 @@
 """
-    Test functions for Matchy
+    Test functions for the matching module
 """
 import discord
 import pytest
@@ -30,6 +30,7 @@ class Role():
 class Member():
     def __init__(self, id: int, roles: list[Role] = []):
         self._id = id
+        self._roles = roles
 
     @property
     def mention(self) -> str:
@@ -37,7 +38,7 @@ class Member():
 
     @property
     def roles(self) -> list[Role]:
-        return []
+        return self._roles
 
     @property
     def id(self) -> int:
@@ -153,7 +154,59 @@ def items_found_in_lists(list_of_lists, items):
             # Nothing specific to validate
         ]
     ),
-], ids=['simple_history', 'fallback'])
+    # Specific test pulled out of the stress test
+    (
+        [
+            {
+                "ts": datetime.now() - timedelta(days=4),
+                "groups": [
+                    [Member(i) for i in [1, 2, 3, 4, 5, 6,
+                                         7, 8, 9, 10, 11, 12, 13, 14, 15]]
+                ]
+            },
+            {
+                "ts": datetime.now() - timedelta(days=5),
+                "groups": [
+                    [Member(i) for i in [1, 2, 3, 4, 5, 6, 7, 8]]
+                ]
+            }
+        ],
+        [Member(i) for i in [1, 2, 11, 4, 12, 3, 7, 5, 8, 10, 9, 6]],
+        3,
+        [
+            # Nothing specific to validate
+        ]
+    ),
+    # Silly example that failued due to bad role logic
+    (
+        [
+            # No history
+        ],
+        [
+            # print([(m.id, [r.id for r in m.roles]) for m in matchees]) to get the below
+            Member(i, [Role(r) for r in roles]) for (i, roles) in
+            [
+                (4, [1, 2, 3, 4, 5, 6, 7, 8]),
+                (8, [1]),
+                (9, [1, 2, 3, 4, 5]),
+                (6, [1, 2, 3]),
+                (11, [1, 2, 3]),
+                (7, [1, 2, 3, 4, 5, 6, 7]),
+                (1, [1, 2, 3, 4]),
+                (5, [1, 2, 3, 4, 5]),
+                (12, [1, 2, 3, 4]),
+                (10, [1]),
+                (13, [1, 2, 3, 4, 5, 6]),
+                (2, [1, 2, 3, 4, 5, 6]),
+                (3, [1, 2, 3, 4, 5, 6, 7])
+            ]
+        ],
+        2,
+        [
+            # Nothing else
+        ]
+    )
+], ids=['simple_history', 'fallback', 'example_1', 'example_2'])
 def test_members_to_groups_with_history(history_data, matchees, per_group, checks):
     """Test more advanced group matching works"""
     tmp_state = state.State()
@@ -180,8 +233,8 @@ def test_members_to_groups_stress_test():
 
         # Slowly ramp a randomized shuffled list of members with randomised roles
         for num_members in range(1, 5):
-            matchees = list(Member(i, list(Role(i) for i in range(1, rand.randint(2, num_members*2 + 1))))
-                            for i in range(1, rand.randint(2, num_members*10 + 1)))
+            matchees = [Member(i, [Role(i) for i in range(1, rand.randint(2, num_members*2 + 1))])
+                        for i in range(1, rand.randint(2, num_members*10 + 1))]
             rand.shuffle(matchees)
 
             for num_history in range(8):
@@ -190,14 +243,14 @@ def test_members_to_groups_stress_test():
                 # Start some time from now to the past
                 time = datetime.now() - timedelta(days=rand.randint(0, num_history*5))
                 history_data = []
-                for x in range(0, num_history):
+                for _ in range(0, num_history):
                     run = {
                         "ts": time
                     }
                     groups = []
                     for y in range(1, num_history):
-                        groups.append(list(Member(i)
-                                           for i in range(1, max(num_members, rand.randint(2, num_members*10 + 1)))))
+                        groups.append([Member(i)
+                                       for i in range(1, max(num_members, rand.randint(2, num_members*10 + 1)))])
                     run["groups"] = groups
                     history_data.append(run)
 
@@ -212,4 +265,32 @@ def test_members_to_groups_stress_test():
                 for d in history_data:
                     tmp_state.log_groups(d["groups"], d["ts"])
 
-                inner_validate_members_to_groups(matchees, tmp_state, per_group)
+                inner_validate_members_to_groups(
+                    matchees, tmp_state, per_group)
+
+
+def test_auth_scopes():
+    tmp_state = state.State()
+
+    id = "1"
+    tmp_state.set_user_scope(id, state.AuthScope.OWNER)
+    assert tmp_state.get_user_has_scope(id, state.AuthScope.OWNER)
+    assert tmp_state.get_user_has_scope(id, state.AuthScope.MATCHER)
+
+    id = "2"
+    tmp_state.set_user_scope(id, state.AuthScope.MATCHER)
+    assert not tmp_state.get_user_has_scope(id, state.AuthScope.OWNER)
+    assert tmp_state.get_user_has_scope(id, state.AuthScope.MATCHER)
+
+    tmp_state.validate()
+
+
+def test_iterate_all_shifts():
+    original = [1, 2, 3, 4]
+    lists = [val for val in matching.iterate_all_shifts(original)]
+    assert lists == [
+        [1, 2, 3, 4],
+        [2, 3, 4, 1],
+        [3, 4, 1, 2],
+        [4, 1, 2, 3],
+    ]
