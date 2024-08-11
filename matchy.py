@@ -68,6 +68,22 @@ async def close(ctx: commands.Context):
     await bot.close()
 
 
+# @bot.tree.command(description="Sign up as a matchee in this server")
+# @commands.guild_only()
+# async def join(interaction: discord.Interaction):
+#     # TODO: Sign up
+#     await interaction.response.send_message(
+#         f"Awesome, great to have you on board {interaction.user.mention}!", ephemeral=True)
+
+
+# @bot.tree.command(description="Leave the matchee list in this server")
+# @commands.guild_only()
+# async def leave(interaction: discord.Interaction):
+#     # TODO: Remove the user
+#     await interaction.response.send_message(
+#         f"No worries, see you soon {interaction.user.mention}!", ephemeral=True)
+
+
 @bot.tree.command(description="Match up matchees")
 @commands.guild_only()
 @app_commands.describe(members_min="Minimum matchees per match (defaults to 3)",
@@ -102,7 +118,7 @@ async def match(interaction: discord.Interaction, members_min: int = None, match
 
     # Post about all the groups with a button to send to the channel
     groups_list = '\n'.join(matching.group_to_message(g) for g in groups)
-    msg = f"Request accepted! I've generated some example groups for you:\n\n{groups_list}"
+    msg = f"Roger! I've generated example groups for ya:\n\n{groups_list}"
     view = discord.utils.MISSING
 
     if not matcher:
@@ -142,10 +158,11 @@ class DynamicGroupButton(discord.ui.DynamicItem[discord.ui.Button],
     async def callback(self, interaction: discord.Interaction) -> None:
         """Match up people when the button is pressed"""
 
-        logger.info("Handling button press min=%s role=%s'", self.min, self.role)
+        logger.info("Handling button press min=%s role=%s'",
+                    self.min, self.role)
         logger.info("User %s from %s in #%s", interaction.user,
                     interaction.guild.name, interaction.channel.name)
-        
+
         # Let the user know we've recieved the message
         await interaction.response.send_message(content="Matchy is matching matchees...", ephemeral=True)
 
@@ -161,7 +178,7 @@ class DynamicGroupButton(discord.ui.DynamicItem[discord.ui.Button],
         # Send the groups
         for msg in (matching.group_to_message(g) for g in groups):
             await interaction.channel.send(msg)
-        
+
         # Close off with a message
         await interaction.channel.send("That's all folks, happy matching and remember - DFTBA!")
 
