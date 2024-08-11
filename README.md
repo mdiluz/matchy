@@ -12,6 +12,9 @@ Matches groups of users in a channel and offers a button to pose those groups to
 ### /join and /leave
 Allows users to sign up and leave the group matching in the channel the command is used
 
+### /pause [days: int(7)]
+Allows users to pause their matching in a channel for a given number of days
+
 ### $sync and $close
 Only usable by `OWNER` users, reloads the config and syncs commands, or closes down the bot. Only usable in DMs with the bot user.
 
