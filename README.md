@@ -31,4 +31,7 @@ User IDs can be grabbed by turning on Discord's developer mode and right clickin
 ## TODO
 * Write bot tests with [dpytest](https://dpytest.readthedocs.io/en/latest/tutorials/getting_started.html)
 * Add scheduling functionality
+* Version the config and history files
+* Implement /signup rather than using roles
+* Implement authorisation scopes instead of just OWNER values
 * Improve the weirdo
