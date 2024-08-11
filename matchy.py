@@ -8,6 +8,7 @@ from discord.ext import commands
 import matching
 import history
 import config
+import re
 
 
 Config = config.load()
@@ -21,6 +22,11 @@ intents.message_content = True
 intents.members = True
 bot = commands.Bot(command_prefix='$',
                    description="Matchy matches matchees", intents=intents)
+
+
+@bot.event
+async def setup_hook():
+    bot.add_dynamic_items(DynamicGroupButton)
 
 
 @bot.event
@@ -64,19 +70,19 @@ async def close(ctx: commands.Context):
 
 @bot.tree.command(description="Match up matchees")
 @commands.guild_only()
-@app_commands.describe(group_min="Minimum matchees per match (defaults to 3)",
+@app_commands.describe(members_min="Minimum matchees per match (defaults to 3)",
                        matchee_role="Role for matchees (defaults to @Matchee)")
-async def match(interaction: discord.Interaction, group_min: int = None, matchee_role: str = None):
+async def match(interaction: discord.Interaction, members_min: int = None, matchee_role: str = None):
     """Match groups of channel members"""
 
     logger.info("Handling request '/match group_min=%s matchee_role=%s'",
-                group_min, matchee_role)
+                members_min, matchee_role)
     logger.info("User %s from %s in #%s", interaction.user,
                 interaction.guild.name, interaction.channel.name)
 
     # Sort out the defaults, if not specified they'll come in as None
-    if not group_min:
-        group_min = 3
+    if not members_min:
+        members_min = 3
     if not matchee_role:
         matchee_role = "Matchee"
 
@@ -88,38 +94,74 @@ async def match(interaction: discord.Interaction, group_min: int = None, matchee
         await interaction.response.send_message(f"Server is missing '{matchee_role}' role :(", ephemeral=True)
         return
 
-    # Create our groups!
+    # Create some example groups to show the user
     matchees = list(
         m for m in interaction.channel.members if matchee in m.roles)
-    groups = matching.members_to_groups(matchees, History, group_min, allow_fallback=True)
+    groups = matching.members_to_groups(
+        matchees, History, members_min, allow_fallback=True)
 
     # Post about all the groups with a button to send to the channel
-    msg = '\n'.join(matching.group_to_message(g) for g in groups)
+    msg = "Example groups:\n" + \
+        '\n'.join(matching.group_to_message(g) for g in groups)
+    view = discord.utils.MISSING
     if not matcher:  # Let a non-matcher know why they don't have the button
         msg += f"\nYou'll need the {matcher.mention if matcher else 'Matcher'}"
         msg += " role to send this to the channel, sorry!"
-    await interaction.response.send_message(msg, ephemeral=True, silent=True,
-                                            view=(GroupMessageButton(groups) if matcher else discord.utils.MISSING))
+    else:
+        view = discord.ui.View(timeout=None)
+        view.add_item(DynamicGroupButton(members_min, matchee_role))
+    await interaction.response.send_message(msg, ephemeral=True, silent=True, view=view)
 
-    logger.info("Done. Matched %s matchees into %s groups.",
-                len(matchees), len(groups))
+    logger.info("Done.")
 
 
-class GroupMessageButton(discord.ui.View):
-    """A button to press to send the groups to the channel"""
+class DynamicGroupButton(discord.ui.DynamicItem[discord.ui.Button],
+                         template=r'match:min:(?P<min>[0-9]+):role:(?P<role>[@\w\s]+)'):
+    def __init__(self, min: int, role: str) -> None:
+        super().__init__(
+            discord.ui.Button(
+                label='Match Groups!',
+                style=discord.ButtonStyle.blurple,
+                custom_id=f'match:min:{min}:role:{role}',
+            )
+        )
+        self.min: int = min
+        self.role: int = role
 
-    def __init__(self, groups: list[list[discord.Member]], timeout: int = 180):
-        self.groups = groups
-        super().__init__(timeout=timeout)
+    # This is called when the button is clicked and the custom_id matches the template.
+    @classmethod
+    async def from_custom_id(cls, interaction: discord.Interaction, item: discord.ui.Button, match: re.Match[str], /):
+        min = int(match['min'])
+        role = str(match['role'])
+        return cls(min, role)
 
-    @discord.ui.button(label="Send groups to channel", style=discord.ButtonStyle.green, emoji="📮")
-    async def send_to_channel(self, interaction: discord.Interaction, _button: discord.ui.Button) -> None:
-        """Send the groups to the channel with the button is pressed"""
-        for msg in (matching.group_to_message(g) for g in self.groups):
+    async def callback(self, interaction: discord.Interaction) -> None:
+        """Match up people when the button is pressed"""
+
+        logger.info("Handling button press min=%s role=%s'", self.min, self.role)
+        logger.info("User %s from %s in #%s", interaction.user,
+                    interaction.guild.name, interaction.channel.name)
+
+        # Grab the role
+        matchee = matching.get_role_from_guild(interaction.guild, self.role)
+        if not matchee:
+            await interaction.response.send_message(f"Server is missing '{self.role}' role :(", ephemeral=True)
+            return
+
+        # Create our groups!
+        matchees = list(
+            m for m in interaction.channel.members if matchee in m.roles)
+        groups = matching.members_to_groups(
+            matchees, History, self.min, allow_fallback=True)
+
+        for msg in (matching.group_to_message(g) for g in groups):
             await interaction.channel.send(msg)
         await interaction.channel.send("That's all folks, happy matching and remember - DFTBA!")
         await interaction.response.edit_message(content="Groups sent to channel!", view=None)
-        History.save_groups_to_history(self.groups)
+        History.save_groups_to_history(groups)
+
+        logger.info("Done. Matched %s matchees into %s groups.",
+                    len(matchees), len(groups))
 
 
 if __name__ == "__main__":
