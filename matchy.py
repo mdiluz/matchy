@@ -101,15 +101,19 @@ async def match(interaction: discord.Interaction, members_min: int = None, match
         matchees, History, members_min, allow_fallback=True)
 
     # Post about all the groups with a button to send to the channel
-    msg = "Example groups:\n" + \
-        '\n'.join(matching.group_to_message(g) for g in groups)
+    groups_list = '\n'.join(matching.group_to_message(g) for g in groups)
+    msg = f"Request accepted! I've generated some example groups for you:\n\n{groups_list}"
     view = discord.utils.MISSING
-    if not matcher:  # Let a non-matcher know why they don't have the button
-        msg += f"\nYou'll need the {matcher.mention if matcher else 'Matcher'}"
-        msg += " role to send this to the channel, sorry!"
+
+    if not matcher:
+        # Let a non-matcher know why they don't have the button
+        msg += "\n\nYou'll need the 'Matcher' role to post this to the channel, sorry!"
     else:
+        # Otherwise set up the button
+        msg += "\n\nClick the button to match up groups and send them to the channel.\n"
         view = discord.ui.View(timeout=None)
         view.add_item(DynamicGroupButton(members_min, matchee_role))
+
     await interaction.response.send_message(msg, ephemeral=True, silent=True, view=view)
 
     logger.info("Done.")
@@ -141,12 +145,12 @@ class DynamicGroupButton(discord.ui.DynamicItem[discord.ui.Button],
         logger.info("Handling button press min=%s role=%s'", self.min, self.role)
         logger.info("User %s from %s in #%s", interaction.user,
                     interaction.guild.name, interaction.channel.name)
+        
+        # Let the user know we've recieved the message
+        await interaction.response.send_message(content="Matchy is matching matchees...", ephemeral=True)
 
         # Grab the role
         matchee = matching.get_role_from_guild(interaction.guild, self.role)
-        if not matchee:
-            await interaction.response.send_message(f"Server is missing '{self.role}' role :(", ephemeral=True)
-            return
 
         # Create our groups!
         matchees = list(
@@ -154,10 +158,14 @@ class DynamicGroupButton(discord.ui.DynamicItem[discord.ui.Button],
         groups = matching.members_to_groups(
             matchees, History, self.min, allow_fallback=True)
 
+        # Send the groups
         for msg in (matching.group_to_message(g) for g in groups):
             await interaction.channel.send(msg)
+        
+        # Close off with a message
         await interaction.channel.send("That's all folks, happy matching and remember - DFTBA!")
-        await interaction.response.edit_message(content="Groups sent to channel!", view=None)
+
+        # Save the groups to the history
         History.save_groups_to_history(groups)
 
         logger.info("Done. Matched %s matchees into %s groups.",
