@@ -39,7 +39,7 @@ Matchy is configured by a `config.json` file that takes this format:
     }
 }
 ```
-Only token and version are required. See [`py/config.py`](for explanations for any of these)
+Only token and version are required. See [`py/config.py`](py/config.py) for explanations for any of these.
 
 ## TODO
 * Write bot tests with [dpytest](https://dpytest.readthedocs.io/en/latest/tutorials/getting_started.html)
