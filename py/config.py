@@ -26,7 +26,7 @@ class _Key():
     UPPER_THRESHOLD = "upper_threshold"
 
     # Removed
-    OWNERS = "owners"
+    _OWNERS = "owners"
 
 
 _SCHEMA = Schema(
@@ -54,7 +54,7 @@ _SCHEMA = Schema(
 def _migrate_to_v1(d: dict):
     # Owners moved to History in v1
     # Note: owners will be required to be re-added to the state.json
-    owners = d.pop(_Key.OWNERS)
+    owners = d.pop(_Key._OWNERS)
     logger.warn(
         "Migration removed owners from config, these must be re-added to the state.json")
     logger.warn("Owners: %s", owners)

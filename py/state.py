@@ -13,18 +13,48 @@ logger.setLevel(logging.INFO)
 
 
 # Warning: Changing any of the below needs proper thought to ensure backwards compatibility
-_VERSION = 1
+_VERSION = 2
 
 
 def _migrate_to_v1(d: dict):
-    logger.info("Renaming %s to %s", _Key.MATCHEES, _Key.USERS)
-    d[_Key.USERS] = d[_Key.MATCHEES]
-    del d[_Key.MATCHEES]
+    """v1 simply renamed matchees to users"""
+    logger.info("Renaming %s to %s", _Key._MATCHEES, _Key.USERS)
+    d[_Key.USERS] = d[_Key._MATCHEES]
+    del d[_Key._MATCHEES]
+
+
+def _migrate_to_v2(d: dict):
+    """v2 swapped the date over to a less silly format"""
+    logger.info("Fixing up date format from %s to %s",
+                _TIME_FORMAT_OLD, _TIME_FORMAT)
+
+    def old_to_new_ts(ts: str) -> str:
+        return datetime.strftime(datetime.strptime(ts, _TIME_FORMAT_OLD), _TIME_FORMAT)
+
+    # Adjust all the history keys
+    d[_Key.HISTORY] = {
+        old_to_new_ts(ts): entry
+        for ts, entry in d[_Key.HISTORY].items()
+    }
+    # Adjust all the user parts
+    for user in d[_Key.USERS].values():
+        # Update the match dates
+        matches = user.get(_Key.MATCHES, {})
+        for id, ts in matches.items():
+            matches[id] = old_to_new_ts(ts)
+
+        # Update any reactivation dates
+        channels = user.get(_Key.CHANNELS, {})
+        for id, channel in channels.items():
+            old_ts = channel.get(_Key.REACTIVATE, None)
+            if old_ts:
+                channel[_Key.REACTIVATE] = old_to_new_ts(old_ts)
 
 
 # Set of migration functions to apply
 _MIGRATIONS = [
-    _migrate_to_v1
+    _migrate_to_v1,
+    _migrate_to_v2
 ]
 
 
@@ -48,10 +78,11 @@ class _Key(str):
     VERSION = "version"
 
     # Unused
-    MATCHEES = "matchees"
+    _MATCHEES = "matchees"
 
 
-_TIME_FORMAT = "%a %b %d %H:%M:%S %Y"
+_TIME_FORMAT = "%Y-%m-%d %H:%M:%S.%f"
+_TIME_FORMAT_OLD = "%a %b %d %H:%M:%S %Y"
 
 
 _SCHEMA = Schema(
