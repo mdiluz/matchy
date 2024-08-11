@@ -130,10 +130,9 @@ class State():
             dict = self._dict
         _SCHEMA.validate(dict)
 
-    def get_oldest_timestamp(self) -> datetime:
-        """Grab the oldest timestamp in history"""
-        times = (ts_to_datetime(dt) for dt in self._history.keys())
-        return next(times, None)
+    def get_history_timestamps(self) -> list[datetime]:
+        """Grab all timestamps in the history"""
+        return sorted([ts_to_datetime(dt) for dt in self._history.keys()])
 
     def get_user_matches(self, id: int) -> list[int]:
         return self._users.get(str(id), {}).get(_Key.MATCHES, {})

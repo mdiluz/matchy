@@ -3,20 +3,24 @@ import logging
 from datetime import datetime, timedelta
 from typing import Protocol, runtime_checkable
 import state
-
-
-# Number of days to step forward from the start of history for each match attempt
-_ATTEMPT_TIMESTEP_INCREMENT = timedelta(days=7)
+import config
 
 
 class _ScoreFactors(int):
-    """Various eligability scoring factors for group meetups"""
-    REPEAT_ROLE = 2**2
-    REPEAT_MATCH = 2**3
-    EXTRA_MEMBER = 2**5
+    """
+    Score factors used when trying to build up "best fit" groups
+    Matchees are sequentially placed into the lowest scoring available group
+    """
 
-    # Scores higher than this are fully rejected
-    UPPER_THRESHOLD = 2**6
+    # Added for each role the matchee has that another group member has
+    REPEAT_ROLE = config.Config.score_factors.repeat_role or 2**2
+    # Added for each member in the group that the matchee has already matched with
+    REPEAT_MATCH = config.Config.score_factors.repeat_match or 2**3
+    # Added for each additional member over the set "per group" value
+    EXTRA_MEMBER = config.Config.score_factors.extra_member or 2**5
+
+    # Upper threshold, if the user scores higher than this they will not be placed in that group
+    UPPER_THRESHOLD = config.Config.score_factors.upper_threshold or 2**6
 
 
 logger = logging.getLogger("matching")
@@ -76,8 +80,8 @@ def get_member_group_eligibility_score(member: Member,
         return rating
 
     # Add score based on prior matchups of this user
-    rating += sum(m.id in prior_matches for m in group) * \
-        _ScoreFactors.REPEAT_MATCH
+    num_prior = sum(m.id in prior_matches for m in group)
+    rating += num_prior * _ScoreFactors.REPEAT_MATCH
 
     # Calculate the number of roles that match
     all_role_ids = set(r.id for mr in [r.roles for r in group] for r in mr)
@@ -159,7 +163,7 @@ def iterate_all_shifts(list: list):
 
 
 def members_to_groups(matchees: list[Member],
-                      hist: state.State = state.State(),
+                      st: state.State = state.State(),
                       per_group: int = 3,
                       allow_fallback: bool = False) -> list[list[Member]]:
     """Generate the groups from the set of matchees"""
@@ -170,18 +174,16 @@ def members_to_groups(matchees: list[Member],
     if not matchees:
         return []
 
-    # Grab the oldest timestamp
-    history_start = hist.get_oldest_timestamp() or datetime.now()
-
-    # Walk from the start of time until now using the timestep increment
-    for oldest_relevant_datetime in datetime_range(history_start, _ATTEMPT_TIMESTEP_INCREMENT, datetime.now()):
+    # Walk from the start of history until now trying to match up groups
+    # Or if there's no 
+    for oldest_relevant_datetime in st.get_history_timestamps() + [datetime.now()]:
 
         # Attempt with each starting matchee
         for shifted_matchees in iterate_all_shifts(matchees):
 
             attempts += 1
             groups = attempt_create_groups(
-                shifted_matchees, hist, oldest_relevant_datetime, per_group)
+                shifted_matchees, st, oldest_relevant_datetime, per_group)
 
             # Fail the match if our groups aren't big enough
             if num_groups <= 1 or (groups and all(len(g) >= per_group for g in groups)):

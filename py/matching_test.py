@@ -6,6 +6,8 @@ import pytest
 import random
 import matching
 import state
+import copy
+import itertools
 from datetime import datetime, timedelta
 
 
@@ -40,12 +42,16 @@ class Member():
     def roles(self) -> list[Role]:
         return self._roles
 
+    @roles.setter
+    def roles(self, roles: list[Role]):
+        self._roles = roles
+
     @property
     def id(self) -> int:
         return self._id
 
 
-def inner_validate_members_to_groups(matchees: list[Member], tmp_state: state.State, per_group: int):
+def members_to_groups_validate(matchees: list[Member], tmp_state: state.State, per_group: int):
     """Inner function to validate the main output of the groups function"""
     groups = matching.members_to_groups(matchees, tmp_state, per_group)
 
@@ -83,7 +89,7 @@ def inner_validate_members_to_groups(matchees: list[Member], tmp_state: state.St
 def test_members_to_groups_no_history(matchees, per_group):
     """Test simple group matching works"""
     tmp_state = state.State()
-    inner_validate_members_to_groups(matchees, tmp_state, per_group)
+    members_to_groups_validate(matchees, tmp_state, per_group)
 
 
 def items_found_in_lists(list_of_lists, items):
@@ -205,8 +211,113 @@ def items_found_in_lists(list_of_lists, items):
         [
             # Nothing else
         ]
+    ),
+    # Another weird one pulled out of the stress test
+    (
+        [
+            # print([(str(h["ts"]), [[f"Member({gm.id})" for gm in g] for g in h["groups"]]) for h in history_data])
+            {"ts": datetime.strptime(ts, r"%Y-%m-%d %H:%M:%S.%f"), "groups": [
+                [Member(m) for m in group] for group in groups]}
+            for (ts, groups) in
+            [
+                (
+                    '2024-07-07 20:25:56.313993',
+                    [
+                        [1, 2, 3, 4, 5],
+                        [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+                        [1],
+                        [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+                        [1, 2, 3, 4, 5, 6, 7, 8]
+                    ]
+                ),
+                (
+                    '2024-07-13 20:25:56.313993',
+                    [
+                        [1, 2],
+                        [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+                        [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
+                            12, 13, 14, 15, 16, 17, 18],
+                        [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+                        [1]
+                    ]
+                ),
+                (
+                    '2024-06-29 20:25:56.313993',
+                    [
+                        [1, 2, 3, 4, 5],
+                        [1, 2, 3, 4, 5, 6, 7],
+                        [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+                            13, 14, 15, 16, 17, 18, 19, 20],
+                        [1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+                            11, 12, 13, 14, 15, 16, 17],
+                        [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
+                            12, 13, 14, 15, 16, 17, 18, 19, 20]
+                    ]
+                ),
+                (
+                    '2024-06-25 20:25:56.313993',
+                    [
+                        [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
+                            12, 13, 14, 15, 16, 17, 18],
+                        [1, 2],
+                        [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
+                            12, 13, 14, 15, 16, 17, 18, 19],
+                        [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+                        [1, 2]
+                    ]
+                ),
+                (
+                    '2024-07-04 20:25:56.313993',
+                    [
+                        [1, 2, 3, 4, 5],
+                        [1, 2, 3],
+                        [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
+                        [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+                        [1, 2, 3, 4, 5, 6, 7]
+                    ]
+                ),
+                (
+                    '2024-07-16 20:25:56.313993',
+                    [
+                        [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
+                        [1, 2, 3, 4, 5, 6, 7, 8, 9],
+                        [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+                            13, 14, 15, 16, 17, 18, 19, 20],
+                        [1, 2, 3, 4, 5, 6],
+                        [1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+                            11, 12, 13, 14, 15, 16, 17, 18]
+                    ]
+                )
+            ]
+        ],
+        [
+            # print([(m.id, [r.id for r in m.roles]) for m in matchees]) to get the below
+            Member(i, [Role(r) for r in roles]) for (i, roles) in
+            [
+                (10, [1, 2, 3]),
+                (4, [1, 2, 3]),
+                (5, [1, 2]),
+                (13, [1, 2]),
+                (3, [1, 2, 3, 4]),
+                (14, [1]),
+                (6, [1, 2, 3, 4]),
+                (11, [1]),
+                (9, [1]),
+                (1, [1, 2, 3]),
+                (16, [1, 2]),
+                (15, [1, 2]),
+                (2, [1, 2, 3]),
+                (7, [1, 2, 3]),
+                (12, [1, 2]),
+                (8, [1, 2, 3, 4])
+            ]
+        ],
+        5,
+        [
+            # Nothing
+        ]
     )
-], ids=['simple_history', 'fallback', 'example_1', 'example_2'])
+], ids=['simple_history', 'fallback', 'example_1', 'example_2', 'example_3'])
 def test_members_to_groups_with_history(history_data, matchees, per_group, checks):
     """Test more advanced group matching works"""
     tmp_state = state.State()
@@ -215,66 +326,65 @@ def test_members_to_groups_with_history(history_data, matchees, per_group, check
     for d in history_data:
         tmp_state.log_groups(d["groups"], d["ts"])
 
-    groups = inner_validate_members_to_groups(matchees, tmp_state, per_group)
+    groups = members_to_groups_validate(matchees, tmp_state, per_group)
 
     # Run the custom validate functions
     for check in checks:
         assert check(groups)
 
 
-# Allows controling of the scale of the stress test
-# Try and keep it under 10s when committed, but otherwise these numbers can be fudged
-# Especially to test a wide range of weird situations
-_STRESS_TEST_RANGE_PER_GROUP = range(2, 6)
-_STRESS_TEST_RANGE_NUM_MEMBERS = range(1, 5)
-_STRESS_TEST_RANGE_NUM_HISTORIES = range(8)
+def random_chunk(li, min_chunk, max_chunk, rand):
+    """
+    "Borrowed" from https://stackoverflow.com/questions/21439011/best-way-to-split-a-list-into-randomly-sized-chunks
+    """
+    it = iter(li)
+    while True:
+        nxt = list(itertools.islice(it, rand.randint(min_chunk, max_chunk)))
+        if nxt:
+            yield nxt
+        else:
+            break
 
 
-def test_members_to_groups_stress_test():
-    """stress test firing significant random data at the code"""
+# Generate a large set of "interesting" tests that replay a fake history onto random people
+# Increase these numbers for some extreme programming
+@pytest.mark.parametrize("per_group, num_members, num_history", (
+    (per_group, num_members, num_history)
+    for per_group in range(2, 4)
+    for num_members in range(6, 24, 3)
+    for num_history in range(0, 4)))
+def test_stess_random_groups(per_group, num_members, num_history):
+    """Run a randomised test based on the input"""
 
-    # Use a stable rand, feel free to adjust this if needed but this lets the test be stable
-    rand = random.Random(123)
+    # Seed the random based on the inputs paird with primes
+    # Ensures the test has interesting fake data, but is stable
+    rand = random.Random(per_group*3 + num_members*5 + num_history*7)
 
-    # Slowly ramp up the group size
-    for per_group in _STRESS_TEST_RANGE_PER_GROUP:
+    # Start with a list of all possible members
+    possible_members = [Member(i) for i in range(num_members*2)]
+    for member in possible_members:
+        # Give each member 3 random roles from 1-7
+        member.roles = [Role(i) for i in rand.sample(range(1, 8), 3)]
 
-        # Slowly ramp a randomized shuffled list of members with randomised roles
-        for num_members in _STRESS_TEST_RANGE_NUM_MEMBERS:
-            matchees = [Member(i, [Role(i) for i in range(1, rand.randint(2, num_members*2 + 1))])
-                        for i in range(1, rand.randint(2, num_members*10 + 1))]
-            rand.shuffle(matchees)
+    # Grab a subset for our members
+    rand.shuffle(possible_members)
+    members = copy.deepcopy(possible_members[:num_members])
 
-            for num_history in _STRESS_TEST_RANGE_NUM_HISTORIES:
+    history_data = {}
+    for i in range(num_history):
+        possible_members = copy.deepcopy(possible_members)
+        rand.shuffle(possible_members)
+        history_data[datetime.now() - timedelta(days=i)] = [
+            chunk for chunk in random_chunk(possible_members, per_group, per_group+2, rand)
+        ]
 
-                # Generate some super random history
-                # Start some time from now to the past
-                time = datetime.now() - timedelta(days=rand.randint(0, num_history*5))
-                history_data = []
-                for _ in range(0, num_history):
-                    run = {
-                        "ts": time
-                    }
-                    groups = []
-                    for y in range(1, num_history):
-                        groups.append([Member(i)
-                                       for i in range(1, max(num_members, rand.randint(2, num_members*10 + 1)))])
-                    run["groups"] = groups
-                    history_data.append(run)
+    replay_state = state.State()
 
-                    # Step some time backwards in time
-                    time -= timedelta(days=rand.randint(1, num_history))
+    # Replay the history
+    for ts, groups in history_data.items():
+        replay_state.log_groups(groups, ts)
 
-                # No guarantees on history data order so make it a little harder for matchy
-                rand.shuffle(history_data)
-
-                # Replay the history
-                tmp_state = state.State()
-                for d in history_data:
-                    tmp_state.log_groups(d["groups"], d["ts"])
-
-                inner_validate_members_to_groups(
-                    matchees, tmp_state, per_group)
+    members_to_groups_validate(members, replay_state, per_group)
 
 
 def test_auth_scopes():

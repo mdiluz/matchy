@@ -24,16 +24,25 @@ Only usable by `OWNER` users, reloads the config and syncs commands, or closes d
 
 ## Config
 Matchy is configured by a `config.json` file that takes this format:
-```
+```json
 {
-    "version": 1,
-    "token": "<<github bot token>>",
+    "version" : 1,
+    "token" : "<<github bot token>>",
+
+    "match" : {
+        "score_factors": {
+            "repeat_role" : 4,
+            "repeat_match" : 8,
+            "extra_member" : 32,
+            "upper_threshold" : 64
+        }
+    }
 }
 ```
+Only token and version are required. See [`py/config.py`](for explanations for any of these)
 
 ## TODO
 * Write bot tests with [dpytest](https://dpytest.readthedocs.io/en/latest/tutorials/getting_started.html)
-* Move more constants to the config
 * Add scheduling functionality
 * Fix logging in some sub files (doesn't seem to actually be output?)
 * Improve the weirdo

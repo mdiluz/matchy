@@ -12,9 +12,7 @@ import re
 
 
 STATE_FILE = "state.json"
-CONFIG_FILE = "config.json"
 
-Config = config.load_from_file(CONFIG_FILE)
 State = state.load_from_file(STATE_FILE)
 
 logger = logging.getLogger("matchy")
@@ -229,4 +227,4 @@ def active_members_to_groups(channel: discord.channel, min_members: int):
 
 if __name__ == "__main__":
     handler = logging.StreamHandler()
-    bot.run(Config.token, log_handler=handler, root_logger=True)
+    bot.run(config.Config.token, log_handler=handler, root_logger=True)
