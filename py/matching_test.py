@@ -222,6 +222,14 @@ def test_members_to_groups_with_history(history_data, matchees, per_group, check
         assert check(groups)
 
 
+# Allows controling of the scale of the stress test
+# Try and keep it under 10s when committed, but otherwise these numbers can be fudged
+# Especially to test a wide range of weird situations
+_STRESS_TEST_RANGE_PER_GROUP = range(2, 6)
+_STRESS_TEST_RANGE_NUM_MEMBERS = range(1, 5)
+_STRESS_TEST_RANGE_NUM_HISTORIES = range(8)
+
+
 def test_members_to_groups_stress_test():
     """stress test firing significant random data at the code"""
 
@@ -229,15 +237,15 @@ def test_members_to_groups_stress_test():
     rand = random.Random(123)
 
     # Slowly ramp up the group size
-    for per_group in range(2, 6):
+    for per_group in _STRESS_TEST_RANGE_PER_GROUP:
 
         # Slowly ramp a randomized shuffled list of members with randomised roles
-        for num_members in range(1, 5):
+        for num_members in _STRESS_TEST_RANGE_NUM_MEMBERS:
             matchees = [Member(i, [Role(i) for i in range(1, rand.randint(2, num_members*2 + 1))])
                         for i in range(1, rand.randint(2, num_members*10 + 1))]
             rand.shuffle(matchees)
 
-            for num_history in range(8):
+            for num_history in _STRESS_TEST_RANGE_NUM_HISTORIES:
 
                 # Generate some super random history
                 # Start some time from now to the past
