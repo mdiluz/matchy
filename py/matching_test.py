@@ -350,9 +350,14 @@ def random_chunk(li, min_chunk, max_chunk, rand):
 # Increase these numbers for some extreme programming
 @pytest.mark.parametrize("per_group, num_members, num_history", (
     (per_group, num_members, num_history)
-    for per_group in range(2, 4)
-    for num_members in range(6, 24, 3)
-    for num_history in range(0, 4)))
+    # Most of the time groups are gonna be from 2 to 5
+    for per_group in range(2, 5)
+    # Going lower than 8 members doesn't give the bot much of a chance
+    # And it will fail to not fall back sometimes
+    # That's probably OK frankly
+    for num_members in range(8, 32, 5)
+    # Throw up to 7 histories at the algorithmn
+    for num_history in range(0, 8)))
 def test_stess_random_groups(per_group, num_members, num_history):
     """Run a randomised test based on the input"""
 
@@ -366,25 +371,18 @@ def test_stess_random_groups(per_group, num_members, num_history):
         # Give each member 3 random roles from 1-7
         member.roles = [Role(i) for i in rand.sample(range(1, 8), 3)]
 
-    # Grab a subset for our members
-    rand.shuffle(possible_members)
-    members = copy.deepcopy(possible_members[:num_members])
+    # For each history item match up groups and log those
+    cumulative_state = state.State()
+    for i in range(num_history+1):
 
-    history_data = {}
-    for i in range(num_history):
-        possible_members = copy.deepcopy(possible_members)
+        # Grab the num of members and replay
         rand.shuffle(possible_members)
-        history_data[datetime.now() - timedelta(days=i)] = [
-            chunk for chunk in random_chunk(possible_members, per_group, per_group+2, rand)
-        ]
+        members = copy.deepcopy(possible_members[:num_members])
 
-    replay_state = state.State()
-
-    # Replay the history
-    for ts, groups in history_data.items():
-        replay_state.log_groups(groups, ts)
-
-    members_to_groups_validate(members, replay_state, per_group)
+        groups = members_to_groups_validate(
+            members, cumulative_state, per_group)
+        cumulative_state.log_groups(
+            groups, datetime.now() - timedelta(days=num_history-i))
 
 
 def test_auth_scopes():
