@@ -13,7 +13,7 @@ Matches groups of users in a channel and offers a button to pose those groups to
 Allows users to sign up and leave the group matching in the channel the command is used
 
 ### /pause [days: int(7)]
-Allows users to pause their matching in a channel for a given number of days
+Allows users to pause their matching in a channel for a given number of days. Users can use `/join` to re-join before the end of that time.
 
 ### $sync and $close
 Only usable by `OWNER` users, reloads the config and syncs commands, or closes down the bot. Only usable in DMs with the bot user.
@@ -42,7 +42,6 @@ Matchy is configured by a `config.json` file that takes this format:
 Only token and version are required. See [`py/config.py`](py/config.py) for explanations for any of these.
 
 ## TODO
-* Write bot tests with [dpytest](https://dpytest.readthedocs.io/en/latest/tutorials/getting_started.html)
 * Add scheduling functionality
-* Fix logging in some sub files (doesn't seem to actually be output?)
+* Write integration tests (maybe with [dpytest](https://dpytest.readthedocs.io/en/latest/tutorials/getting_started.html)?)
 * Improve the weirdo
