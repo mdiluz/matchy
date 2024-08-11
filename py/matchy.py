@@ -151,8 +151,8 @@ async def match(interaction: discord.Interaction, members_min: int = None):
         view.add_item(DynamicGroupButton(members_min))
     else:
         # Let a non-matcher know why they don't have the button
-        msg += f"\n\nYou'll need the {
-            state.AuthScope.MATCHER} scope to post this to the channel, sorry!"
+        msg += f"\n\nYou'll need the {state.AuthScope.MATCHER}"
+        + " scope to post this to the channel, sorry!"
 
     await interaction.response.send_message(msg, ephemeral=True, silent=True, view=view)
 
