@@ -116,9 +116,12 @@ def _load_from_file(file: str = _FILE) -> _Config:
     Load the state from a file
     Apply any required migrations
     """
-    assert os.path.isfile(file)
-    loaded = files.load(file)
-    _migrate(loaded)
+    loaded = {}
+    if os.path.isfile(file):
+        loaded = files.load(file)
+        _migrate(loaded)
+    else:
+        logger.warn("No %s file found, bot cannot run!", file)
     return _Config(loaded)
 
 
