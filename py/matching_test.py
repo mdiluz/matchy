@@ -318,8 +318,8 @@ def items_found_in_lists(list_of_lists, items):
         ]
     )
 ], ids=['simple_history', 'fallback', 'example_1', 'example_2', 'example_3'])
-def test_members_to_groups_with_history(history_data, matchees, per_group, checks):
-    """Test more advanced group matching works"""
+def test_unique_regressions(history_data, matchees, per_group, checks):
+    """Test a bunch of unqiue failures that happened in the past"""
     tmp_state = state.State()
 
     # Replay the history
