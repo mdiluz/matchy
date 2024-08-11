@@ -8,4 +8,4 @@ if [ ! -d .venv ]; then
 fi
 source .venv/bin/activate
 python -m pip install -r requirements.txt
-python matchy.py
+python py/matchy.py
