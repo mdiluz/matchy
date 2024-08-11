@@ -5,7 +5,7 @@ import discord
 import pytest
 import random
 import matching
-import history
+import state
 from datetime import datetime, timedelta
 
 
@@ -44,16 +44,16 @@ class Member():
         return self._id
 
 
-def inner_validate_members_to_groups(matchees: list[Member], hist: history.History, per_group: int):
+def inner_validate_members_to_groups(matchees: list[Member], tmp_state: state.State, per_group: int):
     """Inner function to validate the main output of the groups function"""
-    groups = matching.members_to_groups(matchees, hist, per_group)
+    groups = matching.members_to_groups(matchees, tmp_state, per_group)
 
     # We should always have one group
     assert len(groups)
 
     # Log the groups to history
     # This will validate the internals
-    hist.log_groups_to_history(groups)
+    tmp_state.log_groups(groups)
 
     # Ensure each group contains within the bounds of expected members
     for group in groups:
@@ -81,8 +81,8 @@ def inner_validate_members_to_groups(matchees: list[Member], hist: history.Histo
 ], ids=['single', "larger_groups", "100_members", "5_group", "pairs", "356_big_groups"])
 def test_members_to_groups_no_history(matchees, per_group):
     """Test simple group matching works"""
-    hist = history.History()
-    inner_validate_members_to_groups(matchees, hist, per_group)
+    tmp_state = state.State()
+    inner_validate_members_to_groups(matchees, tmp_state, per_group)
 
 
 def items_found_in_lists(list_of_lists, items):
@@ -95,8 +95,8 @@ def items_found_in_lists(list_of_lists, items):
 
 @pytest.mark.parametrize("history_data, matchees, per_group, checks", [
     # Slightly more difficult test
-    # Describe a history where we previously matched up some people and ensure they don't get rematched
     (
+        # Describe a history where we previously matched up some people and ensure they don't get rematched
         [
             {
                 "ts": datetime.now() - timedelta(days=1),
@@ -156,13 +156,13 @@ def items_found_in_lists(list_of_lists, items):
 ], ids=['simple_history', 'fallback'])
 def test_members_to_groups_with_history(history_data, matchees, per_group, checks):
     """Test more advanced group matching works"""
-    hist = history.History()
+    tmp_state = state.State()
 
     # Replay the history
     for d in history_data:
-        hist.log_groups_to_history(d["groups"], d["ts"])
+        tmp_state.log_groups(d["groups"], d["ts"])
 
-    groups = inner_validate_members_to_groups(matchees, hist, per_group)
+    groups = inner_validate_members_to_groups(matchees, tmp_state, per_group)
 
     # Run the custom validate functions
     for check in checks:
@@ -208,8 +208,8 @@ def test_members_to_groups_stress_test():
                 rand.shuffle(history_data)
 
                 # Replay the history
-                hist = history.History()
+                tmp_state = state.State()
                 for d in history_data:
-                    hist.log_groups_to_history(d["groups"], d["ts"])
+                    tmp_state.log_groups(d["groups"], d["ts"])
 
-                inner_validate_members_to_groups(matchees, hist, per_group)
+                inner_validate_members_to_groups(matchees, tmp_state, per_group)

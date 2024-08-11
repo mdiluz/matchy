@@ -3,7 +3,7 @@ import logging
 import random
 from datetime import datetime, timedelta
 from typing import Protocol, runtime_checkable
-import history
+import state
 
 
 # Number of days to step forward from the start of history for each match attempt
@@ -88,7 +88,7 @@ def get_member_group_eligibility_score(member: Member,
 
 
 def attempt_create_groups(matchees: list[Member],
-                          hist: history.History,
+                          hist: state.State,
                           oldest_relevant_ts: datetime,
                           per_group: int) -> tuple[bool, list[list[Member]]]:
     """History aware group matching"""
@@ -106,7 +106,7 @@ def attempt_create_groups(matchees: list[Member],
         matchee_matches = hist.matchees.get(
             str(matchee.id), {}).get("matches", {})
         relevant_matches = list(int(id) for id, ts in matchee_matches.items()
-                                if history.ts_to_datetime(ts) >= oldest_relevant_ts)
+                                if state.ts_to_datetime(ts) >= oldest_relevant_ts)
 
         # Try every single group from the current group onwards
         # Progressing through the groups like this ensures we slowly fill them up with compatible people
@@ -144,7 +144,7 @@ def datetime_range(start_time: datetime, increment: timedelta, end: datetime):
 
 
 def members_to_groups(matchees: list[Member],
-                      hist: history.History = history.History(),
+                      hist: state.State = state.State(),
                       per_group: int = 3,
                       allow_fallback: bool = False) -> list[list[Member]]:
     """Generate the groups from the set of matchees"""
@@ -152,7 +152,7 @@ def members_to_groups(matchees: list[Member],
     rand = random.Random(117)  # Some stable randomness
 
     # Grab the oldest timestamp
-    history_start = hist.oldest() or datetime.now()
+    history_start = hist.oldest_history() or datetime.now()
 
     # Walk from the start of time until now using the timestep increment
     for oldest_relevant_datetime in datetime_range(history_start, _ATTEMPT_TIMESTEP_INCREMENT, datetime.now()):

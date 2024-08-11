@@ -6,13 +6,13 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 import matching
-import history
+import state
 import config
 import re
 
 
 Config = config.load()
-History = history.load()
+State = state.load()
 
 logger = logging.getLogger("matchy")
 logger.setLevel(logging.INFO)
@@ -68,22 +68,6 @@ async def close(ctx: commands.Context):
     await bot.close()
 
 
-# @bot.tree.command(description="Sign up as a matchee in this server")
-# @commands.guild_only()
-# async def join(interaction: discord.Interaction):
-#     # TODO: Sign up
-#     await interaction.response.send_message(
-#         f"Awesome, great to have you on board {interaction.user.mention}!", ephemeral=True)
-
-
-# @bot.tree.command(description="Leave the matchee list in this server")
-# @commands.guild_only()
-# async def leave(interaction: discord.Interaction):
-#     # TODO: Remove the user
-#     await interaction.response.send_message(
-#         f"No worries, see you soon {interaction.user.mention}!", ephemeral=True)
-
-
 @bot.tree.command(description="Match up matchees")
 @commands.guild_only()
 @app_commands.describe(members_min="Minimum matchees per match (defaults to 3)",
@@ -114,7 +98,7 @@ async def match(interaction: discord.Interaction, members_min: int = None, match
     matchees = list(
         m for m in interaction.channel.members if matchee in m.roles)
     groups = matching.members_to_groups(
-        matchees, History, members_min, allow_fallback=True)
+        matchees, State, members_min, allow_fallback=True)
 
     # Post about all the groups with a button to send to the channel
     groups_list = '\n'.join(matching.group_to_message(g) for g in groups)
@@ -173,7 +157,7 @@ class DynamicGroupButton(discord.ui.DynamicItem[discord.ui.Button],
         matchees = list(
             m for m in interaction.channel.members if matchee in m.roles)
         groups = matching.members_to_groups(
-            matchees, History, self.min, allow_fallback=True)
+            matchees, State, self.min, allow_fallback=True)
 
         # Send the groups
         for msg in (matching.group_to_message(g) for g in groups):
@@ -183,7 +167,7 @@ class DynamicGroupButton(discord.ui.DynamicItem[discord.ui.Button],
         await interaction.channel.send("That's all folks, happy matching and remember - DFTBA!")
 
         # Save the groups to the history
-        History.save_groups_to_history(groups)
+        State.save_groups(groups)
 
         logger.info("Done. Matched %s matchees into %s groups.",
                     len(matchees), len(groups))
