@@ -36,7 +36,7 @@ async def setup_hook():
 async def on_ready():
     """Bot is ready and connected"""
     logger.info("Bot is up and ready!")
-    activity = discord.Game("/match")
+    activity = discord.Game("/join")
     await bot.change_presence(status=discord.Status.online, activity=activity)
 
 
