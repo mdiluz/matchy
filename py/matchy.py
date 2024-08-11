@@ -160,17 +160,18 @@ async def match(interaction: discord.Interaction, members_min: int = None):
 
 
 # Increment when adjusting the custom_id so we don't confuse old users
-_BUTTON_CUSTOM_ID_VERSION = 1
+_MATCH_BUTTON_CUSTOM_ID_VERSION = 1
+_MATCH_BUTTON_CUSTOM_ID_PREFIX = f'match:v{_MATCH_BUTTON_CUSTOM_ID_VERSION}:'
 
 
 class DynamicGroupButton(discord.ui.DynamicItem[discord.ui.Button],
-                         template=f'match:v{_BUTTON_CUSTOM_ID_VERSION}:' + r'min:(?P<min>[0-9]+)'):
+                         template=_MATCH_BUTTON_CUSTOM_ID_PREFIX + r'min:(?P<min>[0-9]+)'):
     def __init__(self, min: int) -> None:
         super().__init__(
             discord.ui.Button(
                 label='Match Groups!',
                 style=discord.ButtonStyle.blurple,
-                custom_id=f'match:min:{min}',
+                custom_id=_MATCH_BUTTON_CUSTOM_ID_PREFIX + f'min:{min}',
             )
         )
         self.min: int = min
