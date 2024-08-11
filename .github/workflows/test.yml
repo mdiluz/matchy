@@ -18,12 +18,9 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         python -m pip install -r requirements.txt
-    - name: Analysing the code with flake8
+    - name: Run tests
       run: |
-        flake8 --max-line-length 120 $(git ls-files '*.py')
-    - name: Run tests with pytest
-      run: |
-        pytest
+        bash bin/test.sh
     - name: Update release branch
       if: github.ref == 'refs/heads/main'
       run: |
