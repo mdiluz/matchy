@@ -55,11 +55,11 @@ def test_channeljoin():
         assert not st.get_user_active_in_channel(1, "2")
 
         st = state.load_from_file(path)
-        st.set_use_active_in_channel(1, "2", True)
+        st.set_user_active_in_channel(1, "2", True)
         state.save_to_file(st, path)
 
         st = state.load_from_file(path)
         assert st.get_user_active_in_channel(1, "2")
 
-        st.set_use_active_in_channel(1, "2", False)
+        st.set_user_active_in_channel(1, "2", False)
         assert not st.get_user_active_in_channel(1, "2")

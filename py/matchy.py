@@ -75,7 +75,7 @@ async def close(ctx: commands.Context):
 @bot.tree.command(description="Join the matchees for this channel")
 @commands.guild_only()
 async def join(interaction: discord.Interaction):
-    State.set_use_active_in_channel(
+    State.set_user_active_in_channel(
         interaction.user.id, interaction.channel.id)
     state.save_to_file(State, STATE_FILE)
     await interaction.response.send_message(
@@ -87,11 +87,24 @@ async def join(interaction: discord.Interaction):
 @bot.tree.command(description="Leave the matchees for this channel")
 @commands.guild_only()
 async def leave(interaction: discord.Interaction):
-    State.set_use_active_in_channel(
+    State.set_user_active_in_channel(
         interaction.user.id, interaction.channel.id, False)
     state.save_to_file(State, STATE_FILE)
     await interaction.response.send_message(
         f"No worries {interaction.user.mention}. Come back soon :)", ephemeral=True, silent=True)
+
+
+@bot.tree.command(description="Pause your matching in this channel for a number of days")
+@commands.guild_only()
+@app_commands.describe(days="Days to pause for (defaults to 7)")
+async def pause(interaction: discord.Interaction, days: int = None):
+    if not days:  # Default to a week
+        days = 7
+    State.set_user_paused_in_channel(
+        interaction.user.id, interaction.channel.id, days)
+    state.save_to_file(State, STATE_FILE)
+    await interaction.response.send_message(
+        f"Sure thing {interaction.user.mention}. Paused you for {days} days!", ephemeral=True, silent=True)
 
 
 @bot.tree.command(description="List the matchees for this channel")
@@ -195,6 +208,9 @@ class DynamicGroupButton(discord.ui.DynamicItem[discord.ui.Button],
 
 def get_matchees_in_channel(channel: discord.channel):
     """Fetches the matchees in a channel"""
+    # Reactivate any unpaused users
+    State.reactivate_users(channel.id)
+
     # Gather up the prospective matchees
     return [m for m in channel.members if State.get_user_active_in_channel(m.id, channel.id)]
 

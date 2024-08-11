@@ -1,11 +1,12 @@
 """Store bot state"""
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from schema import Schema, And, Use, Optional
 from typing import Protocol
 import files
 import copy
 import logging
+from contextlib import contextmanager
 
 logger = logging.getLogger("state")
 logger.setLevel(logging.INFO)
@@ -83,6 +84,8 @@ _SCHEMA = Schema(
                     Optional(str): {
                         # Whether the user is signed up in this channel
                         _Key.ACTIVE: And(Use(bool)),
+                        # A timestamp for when to re-activate the user
+                        Optional(_Key.REACTIVATE): And(Use(str)),
                     }
                 }
             }
@@ -106,8 +109,13 @@ class Member(Protocol):
 
 
 def ts_to_datetime(ts: str) -> datetime:
-    """Convert a ts to datetime using the internal format"""
+    """Convert a string ts to datetime using the internal format"""
     return datetime.strptime(ts, _TIME_FORMAT)
+
+
+def datetime_to_ts(ts: datetime) -> str:
+    """Convert a datetime to a string ts using the internal format"""
+    return datetime.strftime(ts, _TIME_FORMAT)
 
 
 class State():
@@ -115,14 +123,6 @@ class State():
         """Initialise and validate the state"""
         self.validate(data)
         self._dict = copy.deepcopy(data)
-
-    @property
-    def _history(self) -> dict[str]:
-        return self._dict[_Key.HISTORY]
-
-    @property
-    def _users(self) -> dict[str]:
-        return self._dict[_Key.USERS]
 
     def validate(self, dict: dict = None):
         """Initialise and validate a state dict"""
@@ -138,54 +138,50 @@ class State():
     def get_user_matches(self, id: int) -> list[int]:
         return self._users.get(str(id), {}).get(_Key.MATCHES, {})
 
-    def log_groups(self, groups: list[list[Member]], ts: datetime = datetime.now()) -> None:
+    def log_groups(self, groups: list[list[Member]], ts: datetime = None) -> None:
         """Log the groups"""
-        tmp_state = State(self._dict)
-        ts = datetime.strftime(ts, _TIME_FORMAT)
+        ts = datetime_to_ts(ts or datetime.now())
+        with self._safe_wrap() as safe_state:
+            # Grab or create the hitory item for this set of groups
+            history_item = {}
+            safe_state._history[ts] = history_item
+            history_item_groups = []
+            history_item[_Key.GROUPS] = history_item_groups
 
-        # Grab or create the hitory item for this set of groups
-        history_item = {}
-        tmp_state._history[ts] = history_item
-        history_item_groups = []
-        history_item[_Key.GROUPS] = history_item_groups
+            for group in groups:
 
-        for group in groups:
+                # Add the group data
+                history_item_groups.append({
+                    _Key.MEMBERS: [m.id for m in group]
+                })
 
-            # Add the group data
-            history_item_groups.append({
-                _Key.MEMBERS: [m.id for m in group]
-            })
+                # Update the matchee data with the matches
+                for m in group:
+                    matchee = safe_state._users.get(str(m.id), {})
+                    matchee_matches = matchee.get(_Key.MATCHES, {})
 
-            # Update the matchee data with the matches
-            for m in group:
-                matchee = tmp_state._users.get(str(m.id), {})
-                matchee_matches = matchee.get(_Key.MATCHES, {})
+                    for o in (o for o in group if o.id != m.id):
+                        matchee_matches[str(o.id)] = ts
 
-                for o in (o for o in group if o.id != m.id):
-                    matchee_matches[str(o.id)] = ts
-
-                matchee[_Key.MATCHES] = matchee_matches
-                tmp_state._users[str(m.id)] = matchee
-
-        # Validate before storing the result
-        tmp_state.validate()
-        self._dict = tmp_state._dict
+                    matchee[_Key.MATCHES] = matchee_matches
+                    safe_state._users[str(m.id)] = matchee
 
     def set_user_scope(self, id: str, scope: str, value: bool = True):
         """Add an auth scope to a user"""
-        # Dive in
-        user = self._users.get(str(id), {})
-        scopes = user.get(_Key.SCOPES, [])
+        with self._safe_wrap() as safe_state:
+            # Dive in
+            user = safe_state._users.get(str(id), {})
+            scopes = user.get(_Key.SCOPES, [])
 
-        # Set the value
-        if value and scope not in scopes:
-            scopes.append(scope)
-        elif not value and scope in scopes:
-            scopes.remove(scope)
+            # Set the value
+            if value and scope not in scopes:
+                scopes.append(scope)
+            elif not value and scope in scopes:
+                scopes.remove(scope)
 
-        # Roll out
-        user[_Key.SCOPES] = scopes
-        self._users[id] = user
+            # Roll out
+            user[_Key.SCOPES] = scopes
+            safe_state._users[str(id)] = user
 
     def get_user_has_scope(self, id: str, scope: str) -> bool:
         """
@@ -196,20 +192,9 @@ class State():
         scopes = user.get(_Key.SCOPES, [])
         return AuthScope.OWNER in scopes or scope in scopes
 
-    def set_use_active_in_channel(self, id: str, channel_id: str, active: bool = True):
+    def set_user_active_in_channel(self, id: str, channel_id: str, active: bool = True):
         """Set a user as active (or not) on a given channel"""
-        # Dive in
-        user = self._users.get(str(id), {})
-        channels = user.get(_Key.CHANNELS, {})
-        channel = channels.get(str(channel_id), {})
-
-        # Set the value
-        channel[_Key.ACTIVE] = active
-
-        # Unroll
-        channels[str(channel_id)] = channel
-        user[_Key.CHANNELS] = channels
-        self._users[str(id)] = user
+        self._set_user_channel_prop(id, channel_id, _Key.ACTIVE, active)
 
     def get_user_active_in_channel(self, id: str, channel_id: str) -> bool:
         """Get a users active channels"""
@@ -217,10 +202,68 @@ class State():
         channels = user.get(_Key.CHANNELS, {})
         return str(channel_id) in [channel for (channel, props) in channels.items() if props.get(_Key.ACTIVE, False)]
 
+    def set_user_paused_in_channel(self, id: str, channel_id: str, days: int):
+        """Sets a user as paused in a channel"""
+        # Deactivate the user in the channel first
+        self.set_user_active_in_channel(id, channel_id, False)
+
+        # Set the reactivate time the number of days in the future
+        ts = datetime.now() + timedelta(days=days)
+        self._set_user_channel_prop(
+            id, channel_id, _Key.REACTIVATE, datetime_to_ts(ts))
+
+    def reactivate_users(self, channel_id: str):
+        """Reactivate any users who've passed their reactivation time on this channel"""
+        with self._safe_wrap() as safe_state:
+            for user in safe_state._users.values():
+                channels = user.get(_Key.CHANNELS, {})
+                channel = channels.get(str(channel_id), {})
+                if channel and not channel[_Key.ACTIVE]:
+                    reactivate = channel.get(_Key.REACTIVATE, None)
+                    # Check if we've gone past the reactivation time and re-activate
+                    if reactivate and datetime.now() > ts_to_datetime(reactivate):
+                        channel[_Key.ACTIVE] = True
+
     @property
-    def dict_internal(self) -> dict:
+    def dict_internal_copy(self) -> dict:
         """Only to be used to get the internal dict as a copy"""
         return copy.deepcopy(self._dict)
+
+    @property
+    def _history(self) -> dict[str]:
+        return self._dict[_Key.HISTORY]
+
+    @property
+    def _users(self) -> dict[str]:
+        return self._dict[_Key.USERS]
+
+    def _set_user_channel_prop(self, id: str, channel_id: str, key: str, value):
+        """Set a user channel property helper"""
+        with self._safe_wrap() as safe_state:
+            # Dive in
+            user = safe_state._users.get(str(id), {})
+            channels = user.get(_Key.CHANNELS, {})
+            channel = channels.get(str(channel_id), {})
+
+            # Set the value
+            channel[key] = value
+
+            # Unroll
+            channels[str(channel_id)] = channel
+            user[_Key.CHANNELS] = channels
+            safe_state._users[str(id)] = user
+
+    @contextmanager
+    def _safe_wrap(self):
+        """Safely run any function wrapped in a validate"""
+        # Wrap in a temporary state to validate first to prevent corruption
+        tmp_state = State(self._dict)
+        try:
+            yield tmp_state
+        finally:
+            # Validate and then overwrite our dict with the new one
+            tmp_state.validate()
+            self._dict = tmp_state._dict
 
 
 def _migrate(dict: dict):
@@ -254,4 +297,4 @@ def load_from_file(file: str) -> State:
 
 def save_to_file(state: State, file: str):
     """Saves the state out to a file"""
-    files.save(file, state.dict_internal)
+    files.save(file, state.dict_internal_copy)

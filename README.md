@@ -30,7 +30,6 @@ Matchy is configured by a `config.json` file that takes this format:
 
 ## TODO
 * Write bot tests with [dpytest](https://dpytest.readthedocs.io/en/latest/tutorials/getting_started.html)
-* Implement /pause to pause a user for a little while
 * Move more constants to the config
 * Add scheduling functionality
 * Fix logging in some sub files (doesn't seem to actually be output?)
