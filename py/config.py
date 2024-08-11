@@ -50,6 +50,11 @@ _SCHEMA = Schema(
     }
 )
 
+_EMPTY_DICT = {
+    _Key.TOKEN: "",
+    _Key.VERSION: _VERSION
+}
+
 
 def _migrate_to_v1(d: dict):
     # Owners moved to History in v1
@@ -116,7 +121,7 @@ def _load_from_file(file: str = _FILE) -> _Config:
     Load the state from a file
     Apply any required migrations
     """
-    loaded = {}
+    loaded = _EMPTY_DICT
     if os.path.isfile(file):
         loaded = files.load(file)
         _migrate(loaded)
