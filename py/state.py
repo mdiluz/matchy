@@ -14,7 +14,7 @@ logger.setLevel(logging.INFO)
 
 
 # Warning: Changing any of the below needs proper thought to ensure backwards compatibility
-_VERSION = 3
+_VERSION = 4
 
 
 def _migrate_to_v1(d: dict):
@@ -33,9 +33,9 @@ def _migrate_to_v2(d: dict):
         return datetime.strftime(datetime.strptime(ts, _TIME_FORMAT_OLD), _TIME_FORMAT)
 
     # Adjust all the history keys
-    d[_Key.HISTORY] = {
+    d[_Key._HISTORY] = {
         old_to_new_ts(ts): entry
-        for ts, entry in d[_Key.HISTORY].items()
+        for ts, entry in d[_Key._HISTORY].items()
     }
     # Adjust all the user parts
     for user in d[_Key.USERS].values():
@@ -57,11 +57,17 @@ def _migrate_to_v3(d: dict):
     d[_Key.TASKS] = {}
 
 
+def _migrate_to_v4(d: dict):
+    """v4 removed verbose history tracking"""
+    del d[_Key._HISTORY]
+
+
 # Set of migration functions to apply
 _MIGRATIONS = [
     _migrate_to_v1,
     _migrate_to_v2,
     _migrate_to_v3,
+    _migrate_to_v4,
 ]
 
 
@@ -74,10 +80,6 @@ class AuthScope(str):
 class _Key(str):
     """Various keys used in the schema"""
     VERSION = "version"
-
-    HISTORY = "history"
-    GROUPS = "groups"
-    MEMBERS = "members"
 
     USERS = "users"
     SCOPES = "scopes"
@@ -94,6 +96,9 @@ class _Key(str):
 
     # Unused
     _MATCHEES = "matchees"
+    _HISTORY = "history"
+    _GROUPS = "groups"
+    _MEMBERS = "members"
 
 
 _TIME_FORMAT = "%Y-%m-%d %H:%M:%S.%f"
@@ -104,20 +109,6 @@ _SCHEMA = Schema(
     {
         # The current version
         _Key.VERSION: Use(int),
-
-        _Key.HISTORY: {
-            # A datetime
-            Optional(str): {
-                _Key.GROUPS: [
-                    {
-                        _Key.MEMBERS: [
-                            # The ID of each matchee in the match
-                            Use(int)
-                        ]
-                    }
-                ]
-            }
-        },
 
         _Key.USERS: {
             # User ID as string
@@ -156,7 +147,6 @@ _SCHEMA = Schema(
 
 # Empty but schema-valid internal dict
 _EMPTY_DICT = {
-    _Key.HISTORY: {},
     _Key.USERS: {},
     _Key.TASKS: {},
     _Key.VERSION: _VERSION
@@ -192,9 +182,22 @@ class State():
             dict = self._dict
         _SCHEMA.validate(dict)
 
-    def get_history_timestamps(self) -> list[datetime]:
+    def get_history_timestamps(self, users: list[Member]) -> list[datetime]:
         """Grab all timestamps in the history"""
-        return sorted([ts_to_datetime(dt) for dt in self._history.keys()])
+        others = [m.id for m in users]
+
+        # Fetch all the interaction times in history
+        # But only for interactions in the given user group
+        times = set()
+        for data in (data for id, data in self._users.items() if int(id) in others):
+            matches = data.get(_Key.MATCHES, {})
+            for ts in (ts for id, ts in matches.items() if int(id) in others):
+                times.add(ts)
+
+        # Convert to datetimes and sort
+        datetimes = [ts_to_datetime(ts) for ts in times]
+        datetimes.sort()
+        return datetimes
 
     def get_user_matches(self, id: int) -> list[int]:
         return self._users.get(str(id), {}).get(_Key.MATCHES, {})
@@ -203,46 +206,27 @@ class State():
         """Log the groups"""
         ts = datetime_to_ts(ts or datetime.now())
         with self._safe_wrap() as safe_state:
-            # Grab or create the hitory item for this set of groups
-            history_item = {}
-            safe_state._history[ts] = history_item
-            history_item_groups = []
-            history_item[_Key.GROUPS] = history_item_groups
-
             for group in groups:
-
-                # Add the group data
-                history_item_groups.append({
-                    _Key.MEMBERS: [m.id for m in group]
-                })
-
                 # Update the matchee data with the matches
                 for m in group:
-                    matchee = safe_state._users.get(str(m.id), {})
-                    matchee_matches = matchee.get(_Key.MATCHES, {})
+                    matchee = safe_state._users.setdefault(str(m.id), {})
+                    matchee_matches = matchee.setdefault(_Key.MATCHES, {})
 
                     for o in (o for o in group if o.id != m.id):
                         matchee_matches[str(o.id)] = ts
-
-                    matchee[_Key.MATCHES] = matchee_matches
-                    safe_state._users[str(m.id)] = matchee
 
     def set_user_scope(self, id: str, scope: str, value: bool = True):
         """Add an auth scope to a user"""
         with self._safe_wrap() as safe_state:
             # Dive in
-            user = safe_state._users.get(str(id), {})
-            scopes = user.get(_Key.SCOPES, [])
+            user = safe_state._users.setdefault(str(id), {})
+            scopes = user.setdefault(_Key.SCOPES, [])
 
             # Set the value
             if value and scope not in scopes:
                 scopes.append(scope)
             elif not value and scope in scopes:
                 scopes.remove(scope)
-
-            # Roll out
-            user[_Key.SCOPES] = scopes
-            safe_state._users[str(id)] = user
 
     def get_user_has_scope(self, id: str, scope: str) -> bool:
         """
@@ -277,8 +261,8 @@ class State():
         """Reactivate any users who've passed their reactivation time on this channel"""
         with self._safe_wrap() as safe_state:
             for user in safe_state._users.values():
-                channels = user.get(_Key.CHANNELS, {})
-                channel = channels.get(str(channel_id), {})
+                channels = user.setdefault(_Key.CHANNELS, {})
+                channel = channels.setdefault(str(channel_id), {})
                 if channel and not channel[_Key.ACTIVE]:
                     reactivate = channel.get(_Key.REACTIVATE, None)
                     # Check if we've gone past the reactivation time and re-activate
@@ -316,8 +300,8 @@ class State():
     def set_channel_match_task(self, channel_id: str, members_min: int, weekday: int, hour: int, set: bool) -> bool:
         """Set up a match task on a channel"""
         with self._safe_wrap() as safe_state:
-            channel = safe_state._tasks.get(str(channel_id), {})
-            matches = channel.get(_Key.MATCH_TASKS, [])
+            channel = safe_state._tasks.setdefault(str(channel_id), {})
+            matches = channel.setdefault(_Key.MATCH_TASKS, [])
 
             found = False
             for match in matches:
@@ -340,9 +324,6 @@ class State():
                     _Key.HOUR: hour,
                 })
 
-                # Roll back out, saving the entries in case they're new
-                channel[_Key.MATCH_TASKS] = matches
-                safe_state._tasks[str(channel_id)] = channel
                 return True
 
             # We did not manage to remove the schedule (or add it? though that should be impossible)
@@ -352,10 +333,6 @@ class State():
     def dict_internal_copy(self) -> dict:
         """Only to be used to get the internal dict as a copy"""
         return copy.deepcopy(self._dict)
-
-    @property
-    def _history(self) -> dict[str]:
-        return self._dict[_Key.HISTORY]
 
     @property
     def _users(self) -> dict[str]:
@@ -369,17 +346,12 @@ class State():
         """Set a user channel property helper"""
         with self._safe_wrap() as safe_state:
             # Dive in
-            user = safe_state._users.get(str(id), {})
-            channels = user.get(_Key.CHANNELS, {})
-            channel = channels.get(str(channel_id), {})
+            user = safe_state._users.setdefault(str(id), {})
+            channels = user.setdefault(_Key.CHANNELS, {})
+            channel = channels.setdefault(str(channel_id), {})
 
             # Set the value
             channel[key] = value
-
-            # Unroll
-            channels[str(channel_id)] = channel
-            user[_Key.CHANNELS] = channels
-            safe_state._users[str(id)] = user
 
     @contextmanager
     def _safe_wrap(self):

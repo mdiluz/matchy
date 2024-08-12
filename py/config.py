@@ -105,7 +105,7 @@ class _Config():
 
     @property
     def score_factors(self) -> _ScoreFactors:
-        return _ScoreFactors(self._dict.get(_Key.SCORE_FACTORS, {}))
+        return _ScoreFactors(self._dict.setdefault(_Key.SCORE_FACTORS, {}))
 
 
 def _migrate(dict: dict):

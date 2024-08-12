@@ -176,7 +176,7 @@ def members_to_groups(matchees: list[Member],
         return []
 
     # Walk from the start of history until now trying to match up groups
-    for oldest_relevant_datetime in st.get_history_timestamps() + [datetime.now()]:
+    for oldest_relevant_datetime in st.get_history_timestamps(matchees) + [datetime.now()]:
 
         # Attempt with each starting matchee
         for shifted_matchees in iterate_all_shifts(matchees):
