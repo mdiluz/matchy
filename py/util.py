@@ -12,7 +12,9 @@ def get_day_with_suffix(day):
 def format_today():
     """Format the current datetime"""
     now = datetime.now()
-    return f"{get_day_with_suffix(now.day)} {now.strftime("%B")}"
+    day = get_day_with_suffix(now.day)
+    month = now.strftime("%B")
+    return f"{day} {month}"
 
 
 def format_list(list) -> str:
