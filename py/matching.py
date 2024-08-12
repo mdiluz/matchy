@@ -1,25 +1,27 @@
 """Utility functions for matchy"""
 import logging
-import random
 from datetime import datetime, timedelta
 from typing import Protocol, runtime_checkable
-import history
+import state
+import config
 
 
-# Number of days to step forward from the start of history for each match attempt
-_ATTEMPT_TIMESTEP_INCREMENT = timedelta(days=7)
+class _ScoreFactors(int):
+    """
+    Score factors used when trying to build up "best fit" groups
+    Matchees are sequentially placed into the lowest scoring available group
+    """
 
-# Attempts for each of those time periods
-_ATTEMPTS_PER_TIMESTEP = 3
+    # Added for each role the matchee has that another group member has
+    REPEAT_ROLE = config.Config.score_factors.repeat_role or 2**2
+    # Added for each member in the group that the matchee has already matched with
+    REPEAT_MATCH = config.Config.score_factors.repeat_match or 2**3
+    # Added for each additional member over the set "per group" value
+    EXTRA_MEMBER = config.Config.score_factors.extra_member or 2**5
 
-# Various eligability scoring factors for group meetups
-_SCORE_CURRENT_MEMBERS = 2**1
-_SCORE_REPEAT_ROLE = 2**2
-_SCORE_REPEAT_MATCH = 2**3
-_SCORE_EXTRA_MEMBERS = 2**4
+    # Upper threshold, if the user scores higher than this they will not be placed in that group
+    UPPER_THRESHOLD = config.Config.score_factors.upper_threshold or 2**6
 
-# Scores higher than this are fully rejected
-_SCORE_UPPER_THRESHOLD = 2**6
 
 logger = logging.getLogger("matching")
 logger.setLevel(logging.INFO)
@@ -69,33 +71,42 @@ def members_to_groups_simple(matchees: list[Member], per_group: int) -> tuple[bo
 
 def get_member_group_eligibility_score(member: Member,
                                        group: list[Member],
-                                       relevant_matches: list[int],
-                                       per_group: int) -> int:
+                                       prior_matches: list[int],
+                                       per_group: int) -> float:
     """Rates a member against a group"""
-    rating = len(group) * _SCORE_CURRENT_MEMBERS
+    # An empty group is a "perfect" score atomatically
+    rating = 0
+    if not group:
+        return rating
 
-    repeat_meetings = sum(m.id in relevant_matches for m in group)
-    rating += repeat_meetings * _SCORE_REPEAT_MATCH
+    # Add score based on prior matchups of this user
+    num_prior = sum(m.id in prior_matches for m in group)
+    rating += num_prior * _ScoreFactors.REPEAT_MATCH
 
-    repeat_roles = sum(r in member.roles for r in (m.roles for m in group))
-    rating += (repeat_roles * _SCORE_REPEAT_ROLE)
+    # Calculate the number of roles that match
+    all_role_ids = set(r.id for mr in [r.roles for r in group] for r in mr)
+    member_role_ids = [r.id for r in member.roles]
+    repeat_roles = sum(id in member_role_ids for id in all_role_ids)
+    rating += repeat_roles * _ScoreFactors.REPEAT_ROLE
 
-    extra_members = len(group) - per_group
-    if extra_members > 0:
-        rating += extra_members * _SCORE_EXTRA_MEMBERS
+    # Add score based on the number of extra members
+    # Calculate the member offset (+1 for this user)
+    extra_members = (len(group) - per_group) + 1
+    if extra_members >= 0:
+        rating += extra_members * _ScoreFactors.EXTRA_MEMBER
 
     return rating
 
 
 def attempt_create_groups(matchees: list[Member],
-                          hist: history.History,
+                          current_state: state.State,
                           oldest_relevant_ts: datetime,
                           per_group: int) -> tuple[bool, list[list[Member]]]:
     """History aware group matching"""
     num_groups = max(len(matchees)//per_group, 1)
 
     # Set up the groups in place
-    groups = list([] for _ in range(num_groups))
+    groups = [[] for _ in range(num_groups)]
 
     matchees_left = matchees.copy()
 
@@ -103,21 +114,21 @@ def attempt_create_groups(matchees: list[Member],
     while matchees_left:
         # Get the next matchee to place
         matchee = matchees_left.pop()
-        matchee_matches = hist.matchees.get(
-            str(matchee.id), {}).get("matches", {})
-        relevant_matches = list(int(id) for id, ts in matchee_matches.items()
-                                if history.ts_to_datetime(ts) >= oldest_relevant_ts)
+        matchee_matches = current_state.get_user_matches(matchee.id)
+        relevant_matches = [int(id) for id, ts
+                            in matchee_matches.items()
+                            if state.ts_to_datetime(ts) >= oldest_relevant_ts]
 
         # Try every single group from the current group onwards
         # Progressing through the groups like this ensures we slowly fill them up with compatible people
-        scores: list[tuple[int, int]] = []
+        scores: list[tuple[int, float]] = []
         for group in groups:
 
             score = get_member_group_eligibility_score(
-                matchee, group, relevant_matches, num_groups)
+                matchee, group, relevant_matches, per_group)
 
             # If the score isn't too high, consider this group
-            if score <= _SCORE_UPPER_THRESHOLD:
+            if score <= _ScoreFactors.UPPER_THRESHOLD:
                 scores.append((group, score))
 
             # Optimisation:
@@ -143,31 +154,38 @@ def datetime_range(start_time: datetime, increment: timedelta, end: datetime):
         current += increment
 
 
+def iterate_all_shifts(list: list):
+    """Yields each shifted variation of the input list"""
+    yield list
+    for _ in range(len(list)-1):
+        list = list[1:] + [list[0]]
+        yield list
+
+
 def members_to_groups(matchees: list[Member],
-                      hist: history.History = history.History(),
+                      st: state.State = state.State(),
                       per_group: int = 3,
                       allow_fallback: bool = False) -> list[list[Member]]:
     """Generate the groups from the set of matchees"""
     attempts = 0  # Tracking for logging purposes
-    rand = random.Random(117)  # Some stable randomness
+    num_groups = len(matchees)//per_group
 
-    # Grab the oldest timestamp
-    history_start = hist.oldest() or datetime.now()
+    # Bail early if there's no-one to match
+    if not matchees:
+        return []
 
-    # Walk from the start of time until now using the timestep increment
-    for oldest_relevant_datetime in datetime_range(history_start, _ATTEMPT_TIMESTEP_INCREMENT, datetime.now()):
+    # Walk from the start of history until now trying to match up groups
+    for oldest_relevant_datetime in st.get_history_timestamps() + [datetime.now()]:
 
-        # Have a few attempts before stepping forward in time
-        for _ in range(_ATTEMPTS_PER_TIMESTEP):
-
-            rand.shuffle(matchees)  # Shuffle the matchees each attempt
+        # Attempt with each starting matchee
+        for shifted_matchees in iterate_all_shifts(matchees):
 
             attempts += 1
             groups = attempt_create_groups(
-                matchees, hist, oldest_relevant_datetime, per_group)
+                shifted_matchees, st, oldest_relevant_datetime, per_group)
 
             # Fail the match if our groups aren't big enough
-            if (len(matchees)//per_group) <= 1 or (groups and all(len(g) >= per_group for g in groups)):
+            if num_groups <= 1 or (groups and all(len(g) >= per_group for g in groups)):
                 logger.info("Matched groups after %s attempt(s)", attempts)
                 return groups
 
@@ -175,6 +193,10 @@ def members_to_groups(matchees: list[Member],
     if allow_fallback:
         logger.info("Fell back to simple groups after %s attempt(s)", attempts)
         return members_to_groups_simple(matchees, per_group)
+
+    # Simply assert false, this should never happen
+    # And should be caught by tests
+    assert False
 
 
 def group_to_message(group: list[Member]) -> str:
@@ -185,8 +207,3 @@ def group_to_message(group: list[Member]) -> str:
     else:
         mentions = mentions[0]
     return f"Matched up {mentions}!"
-
-
-def get_role_from_guild(guild: Guild, role: str) -> Role:
-    """Find a role in a guild"""
-    return next((r for r in guild.roles if r.name == role), None)
