@@ -202,7 +202,7 @@ class DynamicGroupButton(discord.ui.DynamicItem[discord.ui.Button],
             # Set up a thread for this match if the bot has permissions to do so
             if intrctn.channel.permissions_for(intrctn.guild.me).create_public_threads:
                 await intrctn.channel.create_thread(
-                    name=f"{util.format_today()} Group {chr(65 + idx)}",
+                    name=f"{util.format_list([m.display_name for m in group])}",
                     message=message,
                     reason="Creating a matching thread")
 

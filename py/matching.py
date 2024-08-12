@@ -45,6 +45,10 @@ class Member(Protocol):
         pass
 
     @property
+    def display_name(self) -> str:
+        pass
+
+    @property
     def roles(self) -> list[Role]:
         pass
 
