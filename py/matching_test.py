@@ -17,7 +17,7 @@ def test_protocols():
     assert isinstance(discord.Guild, matching.Guild)
     assert isinstance(discord.Role, matching.Role)
     assert isinstance(Member, matching.Member)
-    # assert isinstance(Role, matching.Role)
+    assert isinstance(Role, matching.Role)
 
 
 class Role():
@@ -28,6 +28,10 @@ class Role():
     def id(self) -> int:
         return self._id
 
+    @property
+    def name(self) -> str:
+        pass
+
 
 class Member():
     def __init__(self, id: int, roles: list[Role] = []):
@@ -37,6 +41,10 @@ class Member():
     @property
     def mention(self) -> str:
         return f"<@{self._id}>"
+
+    @property
+    def display_name(self) -> str:
+        return f"{self._id}"
 
     @property
     def roles(self) -> list[Role]:

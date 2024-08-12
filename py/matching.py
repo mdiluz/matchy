@@ -33,6 +33,10 @@ class Role(Protocol):
     def id(self) -> int:
         pass
 
+    @property
+    def name(self) -> str:
+        pass
+
 
 @runtime_checkable
 class Member(Protocol):
@@ -50,13 +54,6 @@ class Member(Protocol):
 
     @property
     def roles(self) -> list[Role]:
-        pass
-
-
-@runtime_checkable
-class Role(Protocol):
-    @property
-    def name(self) -> str:
         pass
 
 
