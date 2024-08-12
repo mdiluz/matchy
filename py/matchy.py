@@ -275,8 +275,7 @@ async def match_groups_in_channel(channel: discord.channel, min: int):
         # Set up a thread for this match if the bot has permissions to do so
         if channel.permissions_for(channel.guild.me).create_public_threads:
             await channel.create_thread(
-                name=f"{util.format_list(
-                    [m.display_name for m in group])}",
+                name=util.format_list([m.display_name for m in group]),
                 message=message,
                 reason="Creating a matching thread")
 
