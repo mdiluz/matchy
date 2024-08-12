@@ -285,14 +285,15 @@ class State():
                     if reactivate and datetime.now() > ts_to_datetime(reactivate):
                         channel[_Key.ACTIVE] = True
 
-    def get_active_channel_match_tasks(self) -> Generator[str, int]:
+    def get_active_match_tasks(self, time: datetime | None = None) -> Generator[str, int]:
         """
-        Get any currently active match tasks
+        Get any active match tasks at the given time
         returns list of channel,members_min pairs
         """
-        now = datetime.now()
-        weekday = now.weekday()
-        hour = now.hour
+        if not time:
+            time = datetime.now()
+        weekday = time.weekday()
+        hour = time.hour
 
         for channel, tasks in self._tasks.items():
             for match in tasks.get(_Key.MATCH_TASKS, []):

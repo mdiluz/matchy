@@ -56,5 +56,4 @@ Only token and version are required. See [`py/config.py`](py/config.py) for expl
 * Write integration tests (maybe with [dpytest](https://dpytest.readthedocs.io/en/latest/tutorials/getting_started.html)?)
 * Implement a .json file upgrade test
 * Track if meets were sucessful
-* Send reminder messages
 * Improve the weirdo

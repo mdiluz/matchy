@@ -5,7 +5,7 @@ import logging
 import discord
 from discord import app_commands
 from discord.ext import commands, tasks
-import datetime
+from datetime import datetime, timedelta, time
 import matching
 import state
 import config
@@ -289,13 +289,19 @@ async def match_groups_in_channel(channel: discord.channel, min: int):
     logger.info("Done! Matched into %s groups.", len(groups))
 
 
-@tasks.loop(time=[datetime.time(hour=h) for h in range(24)])
+@tasks.loop(time=[time(hour=h) for h in range(24)])
 async def run_hourly_tasks():
     """Run any hourly tasks we have"""
-    for (channel, min) in State.get_active_channel_match_tasks():
+    for (channel, min) in State.get_active_match_tasks():
         logger.info("Scheduled match task triggered in %s", channel)
         msg_channel = bot.get_channel(int(channel))
         await match_groups_in_channel(msg_channel, min)
+
+    for (channel, _) in State.get_active_match_tasks(datetime.now() + timedelta(days=1)):
+        logger.info("Reminding about scheduled task in %s", channel)
+        msg_channel = bot.get_channel(int(channel))
+        await msg_channel.send("Arf arf! just a reminder I'll be doin a matcherino in here in T-24hrs!"
+                               + "\nUse /join if you haven't already, or /pause if you want to skip a week :)")
 
 
 def get_matchees_in_channel(channel: discord.channel):
