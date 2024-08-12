@@ -9,6 +9,7 @@ import matching
 import state
 import config
 import re
+import util
 
 
 STATE_FILE = "state.json"
@@ -138,7 +139,7 @@ async def match(interaction: discord.Interaction, members_min: int = None):
         return
 
     # Post about all the groups with a button to send to the channel
-    groups_list = '\n'.join(matching.group_to_message(g) for g in groups)
+    groups_list = '\n'.join(", ".join([m.mention for m in g]) for g in groups)
     msg = f"Roger! I've generated example groups for ya:\n\n{groups_list}"
     view = discord.utils.MISSING
 
@@ -176,28 +177,37 @@ class DynamicGroupButton(discord.ui.DynamicItem[discord.ui.Button],
 
     # This is called when the button is clicked and the custom_id matches the template.
     @classmethod
-    async def from_custom_id(cls, interaction: discord.Interaction, item: discord.ui.Button, match: re.Match[str], /):
+    async def from_custom_id(cls, intrctn: discord.Interaction, item: discord.ui.Button, match: re.Match[str], /):
         min = int(match['min'])
         return cls(min)
 
-    async def callback(self, interaction: discord.Interaction) -> None:
+    async def callback(self, intrctn: discord.Interaction) -> None:
         """Match up people when the button is pressed"""
 
         logger.info("Handling button press min=%s", self.min)
-        logger.info("User %s from %s in #%s", interaction.user,
-                    interaction.guild.name, interaction.channel.name)
+        logger.info("User %s from %s in #%s", intrctn.user,
+                    intrctn.guild.name, intrctn.channel.name)
 
         # Let the user know we've recieved the message
-        await interaction.response.send_message(content="Matchy is matching matchees...", ephemeral=True)
+        await intrctn.response.send_message(content="Matchy is matching matchees...", ephemeral=True)
 
-        groups = active_members_to_groups(interaction.channel, self.min)
+        groups = active_members_to_groups(intrctn.channel, self.min)
 
         # Send the groups
-        for msg in (matching.group_to_message(g) for g in groups):
-            await interaction.channel.send(msg)
+        for idx, group in enumerate(groups):
+
+            message = await intrctn.channel.send(
+                f"Matched up {util.format_list([m.mention for m in group])}!")
+
+            # Set up a thread for this match if the bot has permissions to do so
+            if intrctn.channel.permissions_for(intrctn.guild.me).create_public_threads:
+                await intrctn.channel.create_thread(
+                    name=f"{util.format_today()} Group {chr(65 + idx)}",
+                    message=message,
+                    reason="Creating a matching thread")
 
         # Close off with a message
-        await interaction.channel.send("That's all folks, happy matching and remember - DFTBA!")
+        await intrctn.channel.send("That's all folks, happy matching and remember - DFTBA!")
 
         # Save the groups to the history
         State.log_groups(groups)

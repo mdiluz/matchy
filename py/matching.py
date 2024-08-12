@@ -197,13 +197,3 @@ def members_to_groups(matchees: list[Member],
     # Simply assert false, this should never happen
     # And should be caught by tests
     assert False
-
-
-def group_to_message(group: list[Member]) -> str:
-    """Get the message to send for each group"""
-    mentions = [m.mention for m in group]
-    if len(group) > 1:
-        mentions = f"{', '.join(mentions[:-1])} and {mentions[-1]}"
-    else:
-        mentions = mentions[0]
-    return f"Matched up {mentions}!"
