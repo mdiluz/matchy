@@ -1,5 +1,5 @@
 """Very simple config loading library"""
-from schema import Schema, And, Use, Optional
+from schema import Schema, Use, Optional
 import files
 import os
 import logging
@@ -32,19 +32,19 @@ class _Key():
 _SCHEMA = Schema(
     {
         # The current version
-        _Key.VERSION: And(Use(int)),
+        _Key.VERSION: Use(int),
 
         # Discord bot token
-        _Key.TOKEN: And(Use(str)),
+        _Key.TOKEN: Use(str),
 
         # Settings for the match algorithmn, see matching.py for explanations on usage
         Optional(_Key.MATCH): {
             Optional(_Key.SCORE_FACTORS): {
 
-                Optional(_Key.REPEAT_ROLE): And(Use(int)),
-                Optional(_Key.REPEAT_MATCH): And(Use(int)),
-                Optional(_Key.EXTRA_MEMBER): And(Use(int)),
-                Optional(_Key.UPPER_THRESHOLD): And(Use(int)),
+                Optional(_Key.REPEAT_ROLE): Use(int),
+                Optional(_Key.REPEAT_MATCH): Use(int),
+                Optional(_Key.EXTRA_MEMBER): Use(int),
+                Optional(_Key.UPPER_THRESHOLD): Use(int),
             }
         }
     }

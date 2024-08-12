@@ -1,7 +1,8 @@
 """Store bot state"""
 import os
 from datetime import datetime, timedelta
-from schema import Schema, And, Use, Optional
+from schema import Schema, Use, Optional
+from collections.abc import Generator
 from typing import Protocol
 import files
 import copy
@@ -13,7 +14,7 @@ logger.setLevel(logging.INFO)
 
 
 # Warning: Changing any of the below needs proper thought to ensure backwards compatibility
-_VERSION = 2
+_VERSION = 3
 
 
 def _migrate_to_v1(d: dict):
@@ -51,10 +52,16 @@ def _migrate_to_v2(d: dict):
                 channel[_Key.REACTIVATE] = old_to_new_ts(old_ts)
 
 
+def _migrate_to_v3(d: dict):
+    """v3 simply added the tasks entry"""
+    d[_Key.TASKS] = {}
+
+
 # Set of migration functions to apply
 _MIGRATIONS = [
     _migrate_to_v1,
-    _migrate_to_v2
+    _migrate_to_v2,
+    _migrate_to_v3,
 ]
 
 
@@ -66,16 +73,24 @@ class AuthScope(str):
 
 class _Key(str):
     """Various keys used in the schema"""
+    VERSION = "version"
+
     HISTORY = "history"
     GROUPS = "groups"
     MEMBERS = "members"
+
     USERS = "users"
     SCOPES = "scopes"
     MATCHES = "matches"
     ACTIVE = "active"
     CHANNELS = "channels"
     REACTIVATE = "reactivate"
-    VERSION = "version"
+
+    TASKS = "tasks"
+    MATCH_TASKS = "match_tasks"
+    MEMBERS_MIN = "members_min"
+    WEEKDAY = "weekdays"
+    HOUR = "hours"
 
     # Unused
     _MATCHEES = "matchees"
@@ -88,39 +103,54 @@ _TIME_FORMAT_OLD = "%a %b %d %H:%M:%S %Y"
 _SCHEMA = Schema(
     {
         # The current version
-        _Key.VERSION: And(Use(int)),
+        _Key.VERSION: Use(int),
 
-        Optional(_Key.HISTORY): {
+        _Key.HISTORY: {
             # A datetime
             Optional(str): {
                 _Key.GROUPS: [
                     {
                         _Key.MEMBERS: [
                             # The ID of each matchee in the match
-                            And(Use(int))
+                            Use(int)
                         ]
                     }
                 ]
             }
         },
-        Optional(_Key.USERS): {
+
+        _Key.USERS: {
+            # User ID as string
             Optional(str): {
-                Optional(_Key.SCOPES): And(Use(list[str])),
+                Optional(_Key.SCOPES): Use(list[str]),
                 Optional(_Key.MATCHES): {
                     # Matchee ID and Datetime pair
-                    Optional(str): And(Use(str))
+                    Optional(str): Use(str)
                 },
                 Optional(_Key.CHANNELS): {
                     # The channel ID
                     Optional(str): {
                         # Whether the user is signed up in this channel
-                        _Key.ACTIVE: And(Use(bool)),
+                        _Key.ACTIVE: Use(bool),
                         # A timestamp for when to re-activate the user
-                        Optional(_Key.REACTIVATE): And(Use(str)),
+                        Optional(_Key.REACTIVATE): Use(str),
                     }
                 }
             }
         },
+
+        _Key.TASKS: {
+            # Channel ID as string
+            Optional(str): {
+                Optional(_Key.MATCH_TASKS): [
+                    {
+                        _Key.MEMBERS_MIN: Use(int),
+                        _Key.WEEKDAY: Use(int),
+                        _Key.HOUR: Use(int),
+                    }
+                ]
+            }
+        }
     }
 )
 
@@ -128,6 +158,7 @@ _SCHEMA = Schema(
 _EMPTY_DICT = {
     _Key.HISTORY: {},
     _Key.USERS: {},
+    _Key.TASKS: {},
     _Key.VERSION: _VERSION
 }
 assert _SCHEMA.validate(_EMPTY_DICT)
@@ -254,6 +285,68 @@ class State():
                     if reactivate and datetime.now() > ts_to_datetime(reactivate):
                         channel[_Key.ACTIVE] = True
 
+    def get_active_channel_match_tasks(self) -> Generator[str, int]:
+        """
+        Get any currently active match tasks
+        returns list of channel,members_min pairs
+        """
+        now = datetime.now()
+        weekday = now.weekday()
+        hour = now.hour
+
+        for channel, tasks in self._tasks.items():
+            for match in tasks.get(_Key.MATCH_TASKS, []):
+                if match[_Key.WEEKDAY] == weekday and match[_Key.HOUR] == hour:
+                    yield (channel, match[_Key.MEMBERS_MIN])
+
+    def get_channel_match_tasks(self, channel_id: str) -> Generator[int, int, int]:
+        """
+        Get all match tasks for the channel
+        """
+        all_tasks = (
+            tasks.get(_Key.MATCH_TASKS, [])
+            for channel, tasks in self._tasks.items()
+            if str(channel) == str(channel_id)
+        )
+        for tasks in all_tasks:
+            for task in tasks:
+                yield (task[_Key.WEEKDAY], task[_Key.HOUR], task[_Key.MEMBERS_MIN])
+
+    def set_channel_match_task(self, channel_id: str, members_min: int, weekday: int, hour: int, set: bool) -> bool:
+        """Set up a match task on a channel"""
+        with self._safe_wrap() as safe_state:
+            channel = safe_state._tasks.get(str(channel_id), {})
+            matches = channel.get(_Key.MATCH_TASKS, [])
+
+            found = False
+            for match in matches:
+                # Specifically check for the combination of weekday and hour
+                if match[_Key.WEEKDAY] == weekday and match[_Key.HOUR] == hour:
+                    found = True
+                    if set:
+                        match[_Key.MEMBERS_MIN] = members_min
+                    else:
+                        matches.remove(match)
+
+                    # Return true as we've successfully changed the data in place
+                    return True
+
+            # If we didn't find it, add it to the schedule
+            if not found and set:
+                matches.append({
+                    _Key.MEMBERS_MIN: members_min,
+                    _Key.WEEKDAY: weekday,
+                    _Key.HOUR: hour,
+                })
+
+                # Roll back out, saving the entries in case they're new
+                channel[_Key.MATCH_TASKS] = matches
+                safe_state._tasks[str(channel_id)] = channel
+                return True
+
+            # We did not manage to remove the schedule (or add it? though that should be impossible)
+            return False
+
     @property
     def dict_internal_copy(self) -> dict:
         """Only to be used to get the internal dict as a copy"""
@@ -266,6 +359,10 @@ class State():
     @property
     def _users(self) -> dict[str]:
         return self._dict[_Key.USERS]
+
+    @property
+    def _tasks(self) -> dict[str]:
+        return self._dict[_Key.TASKS]
 
     def _set_user_channel_prop(self, id: str, channel_id: str, key: str, value):
         """Set a user channel property helper"""

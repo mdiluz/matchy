@@ -4,7 +4,8 @@
 import logging
 import discord
 from discord import app_commands
-from discord.ext import commands
+from discord.ext import commands, tasks
+import datetime
 import matching
 import state
 import config
@@ -34,9 +35,10 @@ async def setup_hook():
 @bot.event
 async def on_ready():
     """Bot is ready and connected"""
-    logger.info("Bot is up and ready!")
+    run_hourly_tasks.start()
     activity = discord.Game("/join")
     await bot.change_presence(status=discord.Status.online, activity=activity)
+    logger.info("Bot is up and ready!")
 
 
 def owner_only(ctx: commands.Context) -> bool:
@@ -109,17 +111,82 @@ async def pause(interaction: discord.Interaction, days: int = None):
 @bot.tree.command(description="List the matchees for this channel")
 @commands.guild_only()
 async def list(interaction: discord.Interaction):
+
     matchees = get_matchees_in_channel(interaction.channel)
     mentions = [m.mention for m in matchees]
     msg = "Current matchees in this channel:\n" + \
         f"{', '.join(mentions[:-1])} and {mentions[-1]}"
+
+    tasks = State.get_channel_match_tasks(interaction.channel.id)
+    for (day, hour, min) in tasks:
+        next_run = util.get_next_datetime(day, hour)
+        date_str = util.format_day(next_run)
+        msg += f"\nNext scheduled for {date_str} at {
+            hour:02d}:00 with {min} members per group"
+
     await interaction.response.send_message(msg, ephemeral=True, silent=True)
+
+
+@bot.tree.command(description="Schedule a match in this channel (UTC)")
+@commands.guild_only()
+@app_commands.describe(members_min="Minimum matchees per match (defaults to 3)",
+                       weekday="Day of the week to run this (defaults 0, Monday)",
+                       hour="Hour in the day (defaults to 9 utc)",
+                       cancel="Cancel the scheduled match at this time")
+async def schedule(interaction: discord.Interaction,
+                   members_min: int | None = None,
+                   weekday: int | None = None,
+                   hour: int | None = None,
+                   cancel: bool = False):
+    """Schedule a match using the input parameters"""
+
+    # Set all the defaults
+    if not members_min:
+        members_min = 3
+    if weekday is None:
+        weekday = 0
+    if hour is None:
+        hour = 9
+    channel_id = str(interaction.channel.id)
+
+    # Bail if not a matcher
+    if not State.get_user_has_scope(interaction.user.id, state.AuthScope.MATCHER):
+        await interaction.response.send_message("You'll need the 'matcher' scope to schedule a match",
+                                                ephemeral=True, silent=True)
+        return
+
+    # Add the scheduled task and save
+    success = State.set_channel_match_task(
+        channel_id, members_min, weekday, hour, not cancel)
+    state.save_to_file(State, STATE_FILE)
+
+    # Let the user know what happened
+    if not cancel:
+        logger.info("Scheduled new match task in %s with min %s weekday %s hour %s",
+                    channel_id, members_min, weekday, hour)
+        next_run = util.get_next_datetime(weekday, hour)
+        date_str = util.format_day(next_run)
+
+        await interaction.response.send_message(
+            f"Done :) Next run will be on {date_str} at {hour:02d}:00\n"
+            + "Cancel this by re-sending the command with cancel=True",
+            ephemeral=True, silent=True)
+
+    elif success:
+        logger.info("Removed task in %s on weekday %s hour %s",
+                    channel_id, weekday, hour)
+        await interaction.response.send_message(
+            f"Done :) Schedule on day {weekday} and hour {hour} removed!", ephemeral=True, silent=True)
+
+    else:
+        await interaction.response.send_message(
+            f"No schedule for this channel on day {weekday} and hour {hour} found :(", ephemeral=True, silent=True)
 
 
 @bot.tree.command(description="Match up matchees")
 @commands.guild_only()
 @app_commands.describe(members_min="Minimum matchees per match (defaults to 3)")
-async def match(interaction: discord.Interaction, members_min: int = None):
+async def match(interaction: discord.Interaction, members_min: int | None = None):
     """Match groups of channel members"""
 
     logger.info("Handling request '/match group_min=%s", members_min)
@@ -191,29 +258,45 @@ class DynamicGroupButton(discord.ui.DynamicItem[discord.ui.Button],
         # Let the user know we've recieved the message
         await intrctn.response.send_message(content="Matchy is matching matchees...", ephemeral=True)
 
-        groups = active_members_to_groups(intrctn.channel, self.min)
+        # Perform the match
+        await match_groups_in_channel(intrctn.channel, self.min)
 
-        # Send the groups
-        for idx, group in enumerate(groups):
 
-            message = await intrctn.channel.send(
-                f"Matched up {util.format_list([m.mention for m in group])}!")
+async def match_groups_in_channel(channel: discord.channel, min: int):
+    """Match up the groups in a given channel"""
+    groups = active_members_to_groups(channel, min)
 
-            # Set up a thread for this match if the bot has permissions to do so
-            if intrctn.channel.permissions_for(intrctn.guild.me).create_public_threads:
-                await intrctn.channel.create_thread(
-                    name=f"{util.format_list([m.display_name for m in group])}",
-                    message=message,
-                    reason="Creating a matching thread")
+    # Send the groups
+    for group in groups:
 
-        # Close off with a message
-        await intrctn.channel.send("That's all folks, happy matching and remember - DFTBA!")
+        message = await channel.send(
+            f"Matched up {util.format_list([m.mention for m in group])}!")
 
-        # Save the groups to the history
-        State.log_groups(groups)
-        state.save_to_file(State, STATE_FILE)
+        # Set up a thread for this match if the bot has permissions to do so
+        if channel.permissions_for(channel.guild.me).create_public_threads:
+            await channel.create_thread(
+                name=f"{util.format_list(
+                    [m.display_name for m in group])}",
+                message=message,
+                reason="Creating a matching thread")
 
-        logger.info("Done! Matched into %s groups.", len(groups))
+    # Close off with a message
+    await channel.send("That's all folks, happy matching and remember - DFTBA!")
+
+    # Save the groups to the history
+    State.log_groups(groups)
+    state.save_to_file(State, STATE_FILE)
+
+    logger.info("Done! Matched into %s groups.", len(groups))
+
+
+@tasks.loop(time=[datetime.time(hour=h) for h in range(24)])
+async def run_hourly_tasks():
+    """Run any hourly tasks we have"""
+    for (channel, min) in State.get_active_channel_match_tasks():
+        logger.info("Scheduled match task triggered in %s", channel)
+        msg_channel = bot.get_channel(int(channel))
+        await match_groups_in_channel(msg_channel, min)
 
 
 def get_matchees_in_channel(channel: discord.channel):
