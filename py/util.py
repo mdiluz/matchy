@@ -21,7 +21,7 @@ def format_day(time: datetime) -> str:
     return f"{day} {num}"
 
 
-def format_list(list) -> str:
+def format_list(list: list) -> str:
     """Format a list into a human readable format of foo, bar and bob"""
     if len(list) > 1:
         return f"{', '.join(list[:-1])} and {list[-1]}"

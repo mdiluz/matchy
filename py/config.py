@@ -60,9 +60,9 @@ def _migrate_to_v1(d: dict):
     # Owners moved to History in v1
     # Note: owners will be required to be re-added to the state.json
     owners = d.pop(_Key._OWNERS)
-    logger.warn(
+    logger.warning(
         "Migration removed owners from config, these must be re-added to the state.json")
-    logger.warn("Owners: %s", owners)
+    logger.warning("Owners: %s", owners)
 
 
 # Set of migration functions to apply
@@ -126,7 +126,7 @@ def _load_from_file(file: str = _FILE) -> _Config:
         loaded = files.load(file)
         _migrate(loaded)
     else:
-        logger.warn("No %s file found, bot cannot run!", file)
+        logger.warning("No %s file found, bot cannot run!", file)
     return _Config(loaded)
 
 

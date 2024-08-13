@@ -397,13 +397,10 @@ def test_auth_scopes():
     tmp_state = state.State()
 
     id = "1"
-    tmp_state.set_user_scope(id, state.AuthScope.OWNER)
-    assert tmp_state.get_user_has_scope(id, state.AuthScope.OWNER)
-    assert tmp_state.get_user_has_scope(id, state.AuthScope.MATCHER)
+    assert not tmp_state.get_user_has_scope(id, state.AuthScope.MATCHER)
 
     id = "2"
     tmp_state.set_user_scope(id, state.AuthScope.MATCHER)
-    assert not tmp_state.get_user_has_scope(id, state.AuthScope.OWNER)
     assert tmp_state.get_user_has_scope(id, state.AuthScope.MATCHER)
 
     tmp_state.validate()

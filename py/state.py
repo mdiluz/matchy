@@ -13,6 +13,10 @@ logger = logging.getLogger("state")
 logger.setLevel(logging.INFO)
 
 
+# Location of the default state file
+_STATE_FILE = "state.json"
+
+
 # Warning: Changing any of the below needs proper thought to ensure backwards compatibility
 _VERSION = 4
 
@@ -73,7 +77,6 @@ _MIGRATIONS = [
 
 class AuthScope(str):
     """Various auth scopes"""
-    OWNER = "owner"
     MATCHER = "matcher"
 
 
@@ -235,7 +238,7 @@ class State():
         """
         user = self._users.get(str(id), {})
         scopes = user.get(_Key.SCOPES, [])
-        return AuthScope.OWNER in scopes or scope in scopes
+        return scope in scopes
 
     def set_user_active_in_channel(self, id: str, channel_id: str, active: bool = True):
         """Set a user as active (or not) on a given channel"""
@@ -373,7 +376,7 @@ def _migrate(dict: dict):
         dict[_Key.VERSION] = _VERSION
 
 
-def load_from_file(file: str) -> State:
+def load_from_file(file: str = _STATE_FILE) -> State:
     """
     Load the state from a file
     Apply any required migrations
@@ -393,6 +396,6 @@ def load_from_file(file: str) -> State:
     return st
 
 
-def save_to_file(state: State, file: str):
+def save_to_file(state: State, file: str = _STATE_FILE):
     """Saves the state out to a file"""
     files.save(file, state.dict_internal_copy)

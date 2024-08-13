@@ -93,7 +93,8 @@ while ./scripts/run.py; end
 State is stored locally in a `state.json` file. This will be created by the bot. This stores historical information on users, maching schedules, user auth scopes and more. See [`py/state.py`](py/state.py) for schema information if you need to inspect it.
 
 ## TODO
-* Write integration tests (maybe with [dpytest](https://dpytest.readthedocs.io/en/latest/tutorials/getting_started.html)?)
+* Implement better tests to the discordy parts of the codebase
+* Rethink the matcher scope, seems like maybe this could be simpler or removed
 * Implement a .json file upgrade test
 * Track if matches were successful
 * Improve the weirdo
