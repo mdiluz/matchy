@@ -31,7 +31,10 @@ Allows a matcher to set a weekly schedule for matches in the channel, cancel can
 Only usable by users with the `owner` scope. Only usable in a DM with the bot user.
 
 #### $sync and $close
-Syncs bot commands and reloads the state file, or closes down the bot. 
+Syncs bot commands or closes down the bot. 
+
+#### $grant [user: int]
+Grant a given user the matcher scope to allow them to use `/match` and `/schedule`.
 
 ## Development
 Current development is on Linux, though running on Mac or Windows should work fine.
