@@ -5,12 +5,11 @@ import logging
 import discord
 from discord.ext import commands
 import config
-import state
+from state import load_from_file
 from cogs.matchy_cog import MatchyCog
 from cogs.owner_cog import OwnerCog
 
-State = state.load_from_file()
-
+state = load_from_file()
 
 logger = logging.getLogger("matchy")
 logger.setLevel(logging.INFO)
@@ -24,8 +23,8 @@ bot = commands.Bot(command_prefix='$',
 
 @bot.event
 async def setup_hook():
-    await bot.add_cog(MatchyCog(bot, State))
-    await bot.add_cog(OwnerCog(bot))
+    await bot.add_cog(MatchyCog(bot, state))
+    await bot.add_cog(OwnerCog(bot, state))
 
 
 @bot.event
