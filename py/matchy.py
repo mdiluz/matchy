@@ -9,7 +9,8 @@ from state import load_from_file
 from cogs.matchy_cog import MatchyCog
 from cogs.owner_cog import OwnerCog
 
-state = load_from_file()
+_STATE_FILE = "state.json"
+state = load_from_file(_STATE_FILE)
 
 logger = logging.getLogger("matchy")
 logger.setLevel(logging.INFO)
