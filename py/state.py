@@ -1,6 +1,6 @@
 """Store bot state"""
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 from schema import Schema, Use, Optional
 from collections.abc import Generator
 from typing import Protocol

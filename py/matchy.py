@@ -115,7 +115,9 @@ async def pause(interaction: discord.Interaction, days: int | None = None):
         interaction.user.id, interaction.channel.id, until)
     state.save_to_file(State, STATE_FILE)
     await interaction.response.send_message(
-        f"Sure thing {interaction.user.mention}. Paused you until {util.format_day(until)}!", ephemeral=True, silent=True)
+        f"Sure thing {interaction.user.mention}!\n"
+        + f"Paused you until {util.format_day(until)}!",
+        ephemeral=True, silent=True)
 
 
 @bot.tree.command(description="List the matchees for this channel")
