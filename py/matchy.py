@@ -76,6 +76,9 @@ async def close(ctx: commands.Context):
 @bot.tree.command(description="Join the matchees for this channel")
 @commands.guild_only()
 async def join(interaction: discord.Interaction):
+    logger.info("Handling /join in %s %s from %s",
+                interaction.guild.name, interaction.channel, interaction.user.name)
+
     State.set_user_active_in_channel(
         interaction.user.id, interaction.channel.id)
     state.save_to_file(State, STATE_FILE)
@@ -88,6 +91,9 @@ async def join(interaction: discord.Interaction):
 @bot.tree.command(description="Leave the matchees for this channel")
 @commands.guild_only()
 async def leave(interaction: discord.Interaction):
+    logger.info("Handling /leave in %s %s from %s",
+                interaction.guild.name, interaction.channel, interaction.user.name)
+
     State.set_user_active_in_channel(
         interaction.user.id, interaction.channel.id, False)
     state.save_to_file(State, STATE_FILE)
@@ -99,6 +105,9 @@ async def leave(interaction: discord.Interaction):
 @commands.guild_only()
 @app_commands.describe(days="Days to pause for (defaults to 7)")
 async def pause(interaction: discord.Interaction, days: int = None):
+    logger.info("Handling /pause in %s %s from %s with days=%s",
+                interaction.guild.name, interaction.channel, interaction.user.name, days)
+
     if not days:  # Default to a week
         days = 7
     State.set_user_paused_in_channel(
@@ -111,6 +120,8 @@ async def pause(interaction: discord.Interaction, days: int = None):
 @bot.tree.command(description="List the matchees for this channel")
 @commands.guild_only()
 async def list(interaction: discord.Interaction):
+    logger.info("Handling /list command in %s %s from %s",
+                interaction.guild.name, interaction.channel, interaction.user.name)
 
     matchees = get_matchees_in_channel(interaction.channel)
     mentions = [m.mention for m in matchees]
