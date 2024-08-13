@@ -34,7 +34,7 @@ Only usable by users with the `owner` scope. Only usable in a DM with the bot us
 Syncs bot commands and reloads the state file, or closes down the bot. 
 
 ## Development
-Current development is on Linux, though running on Mac or Windows should work fine, although some scripts are currently bash.
+Current development is on Linux, though running on Mac or Windows should work fine.
 
 ### Dependencies
 * `python3` - Obviously, ideally 3.11
@@ -51,10 +51,10 @@ pip install -r requirements.txt
 VSCode can then be configured to use this new `.venv` and is the recommended way to develop.
 
 ### Tests
-Python tests are written to use `pytest` and cover most internal functionality. Tests can be run in the same way as in the Github Actions with [`bin/test.sh`](`bin/test.sh`), which lints all python code and runs any tests with `pytest`.
+Python tests are written to use `pytest` and cover most internal functionality. Tests can be run in the same way as in the Github Actions with [`scripts/test.py`](`scripts/test.py`), which lints all python code and runs any tests with `pytest`.
 
 #### Coverage
-A helper script [`bin/coverage.sh`](bin/coverage.sh) is available to generate a html view on current code coverage.
+A helper script [`scripts/test-cov.py`](scripts/test-cov.py) is available to generate a html view on current code coverage.
 
 ## Hosting
 
@@ -82,11 +82,11 @@ See [`py/config.py`](py/config.py) for explanations for any extra settings here.
 ### Running
 It is recommended to only ever run the `release` branch in production, as this branch has passed the tests.
 
-Running the bot can be as simple as `python3 bin/matchy.py`, but a [`bin/run.py`](bin/run.py) script is provided to update with `git pull`, enter the `.venv`, install new `pip` dependencies and run the bot. 
+Running the bot can be as simple as `python3 scripts/matchy.py`, but a [`scripts/run.py`](scripts/run.py) script is provided to update to the latest release, install any new `pip` dependencies and run the bot. 
 
-The following command can be used to execute `run.sh` command on a loop, allowing the bot to be updated with a simple `$close` command from an owner, exiting the loop if the bot throws any fatal errors.
+The following command can be used to execute `run.py` on a loop, allowing the bot to be updated with a simple `$close` command from an `owner` user, but will still exit the loop if the bot throws a fatal error.
 ```
-while ./bin/run.sh; end
+while ./scripts/run.py; end
 ```
 
 ### State
