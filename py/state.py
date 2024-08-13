@@ -247,22 +247,20 @@ class State():
         channels = user.get(_Key.CHANNELS, {})
         return str(channel_id) in [channel for (channel, props) in channels.items() if props.get(_Key.ACTIVE, False)]
 
-    def set_user_paused_in_channel(self, id: str, channel_id: str, days: int):
+    def set_user_paused_in_channel(self, id: str, channel_id: str, until: datetime):
         """Sets a user as paused in a channel"""
         # Deactivate the user in the channel first
         self.set_user_active_in_channel(id, channel_id, False)
 
-        # Set the reactivate time the number of days in the future
-        ts = datetime.now() + timedelta(days=days)
         self._set_user_channel_prop(
-            id, channel_id, _Key.REACTIVATE, datetime_to_ts(ts))
+            id, channel_id, _Key.REACTIVATE, datetime_to_ts(until))
 
     def reactivate_users(self, channel_id: str):
         """Reactivate any users who've passed their reactivation time on this channel"""
         with self._safe_wrap() as safe_state:
             for user in safe_state._users.values():
-                channels = user.setdefault(_Key.CHANNELS, {})
-                channel = channels.setdefault(str(channel_id), {})
+                channels = user.get(_Key.CHANNELS, {})
+                channel = channels.get(str(channel_id), {})
                 if channel and not channel[_Key.ACTIVE]:
                     reactivate = channel.get(_Key.REACTIVATE, None)
                     # Check if we've gone past the reactivation time and re-activate
