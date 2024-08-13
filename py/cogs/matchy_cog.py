@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, time
 
 import cogs.match_button as match_button
 import matching
-from state import State, save_to_file, AuthScope
+from state import State, AuthScope
 import util
 
 logger = logging.getLogger("cog")
@@ -38,7 +38,6 @@ class MatchyCog(commands.Cog):
 
         self.state.set_user_active_in_channel(
             interaction.user.id, interaction.channel.id)
-        save_to_file(self.state)
         await interaction.response.send_message(
             f"Roger roger {interaction.user.mention}!\n"
             + f"Added you to {interaction.channel.mention}!",
@@ -52,7 +51,6 @@ class MatchyCog(commands.Cog):
 
         self.state.set_user_active_in_channel(
             interaction.user.id, interaction.channel.id, False)
-        save_to_file(self.state)
         await interaction.response.send_message(
             f"No worries {interaction.user.mention}. Come back soon :)", ephemeral=True, silent=True)
 
@@ -68,7 +66,6 @@ class MatchyCog(commands.Cog):
         until = datetime.now() + timedelta(days=days)
         self.state.set_user_paused_in_channel(
             interaction.user.id, interaction.channel.id, until)
-        save_to_file(self.state)
         await interaction.response.send_message(
             f"Sure thing {interaction.user.mention}!\n"
             + f"Paused you until {util.format_day(until)}!",
@@ -127,7 +124,6 @@ class MatchyCog(commands.Cog):
         # Add the scheduled task and save
         success = self.state.set_channel_match_task(
             channel_id, members_min, weekday, hour, not cancel)
-        save_to_file(self.state)
 
         # Let the user know what happened
         if not cancel:

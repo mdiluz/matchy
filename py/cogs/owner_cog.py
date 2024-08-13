@@ -3,7 +3,7 @@ Owner bot cog
 """
 import logging
 from discord.ext import commands
-from state import State, AuthScope, save_to_file
+from state import State, AuthScope
 
 logger = logging.getLogger("owner")
 logger.setLevel(logging.INFO)
@@ -49,7 +49,6 @@ class OwnerCog(commands.Cog):
         """
         if user.isdigit():
             self._state.set_user_scope(str(user), AuthScope.MATCHER)
-            save_to_file(self._state)
             logger.info("Granting user %s matcher scope", user)
             await ctx.reply("Done!", ephemeral=True)
         else:
