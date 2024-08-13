@@ -124,7 +124,6 @@ async def list(interaction: discord.Interaction):
         msg += f"\nNext scheduled for {date_str} at {hour:02d}:00"
         msg += f" with {min} members per group"
 
-
     await interaction.response.send_message(msg, ephemeral=True, silent=True)
 
 
