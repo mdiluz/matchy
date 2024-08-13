@@ -96,7 +96,7 @@ def members_to_groups_validate(matchees: list[Member], tmp_state: state.State, p
 ], ids=['single', "larger_groups", "100_members", "5_group", "pairs", "356_big_groups"])
 def test_members_to_groups_no_history(matchees, per_group):
     """Test simple group matching works"""
-    tmp_state = state.State()
+    tmp_state = state.State(state._EMPTY_DICT)
     members_to_groups_validate(matchees, tmp_state, per_group)
 
 
@@ -328,7 +328,7 @@ def items_found_in_lists(list_of_lists, items):
 ], ids=['simple_history', 'fallback', 'example_1', 'example_2', 'example_3'])
 def test_unique_regressions(history_data, matchees, per_group, checks):
     """Test a bunch of unqiue failures that happened in the past"""
-    tmp_state = state.State()
+    tmp_state = state.State(state._EMPTY_DICT)
 
     # Replay the history
     for d in history_data:
@@ -380,7 +380,7 @@ def test_stess_random_groups(per_group, num_members, num_history):
         member.roles = [Role(i) for i in rand.sample(range(1, 8), 3)]
 
     # For each history item match up groups and log those
-    cumulative_state = state.State()
+    cumulative_state = state.State(state._EMPTY_DICT)
     for i in range(num_history+1):
 
         # Grab the num of members and replay
@@ -394,7 +394,7 @@ def test_stess_random_groups(per_group, num_members, num_history):
 
 
 def test_auth_scopes():
-    tmp_state = state.State()
+    tmp_state = state.State(state._EMPTY_DICT)
 
     id = "1"
     assert not tmp_state.get_user_has_scope(id, state.AuthScope.MATCHER)

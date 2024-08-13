@@ -3,7 +3,7 @@ import logging
 import discord
 from datetime import datetime, timedelta
 from typing import Protocol, runtime_checkable
-from state import State, save_to_file, ts_to_datetime
+from state import State, ts_to_datetime
 import util
 import config
 
@@ -166,7 +166,7 @@ def iterate_all_shifts(list: list):
 
 
 def members_to_groups(matchees: list[Member],
-                      state: State = State(),
+                      state: State,
                       per_group: int = 3,
                       allow_fallback: bool = False) -> list[list[Member]]:
     """Generate the groups from the set of matchees"""
@@ -224,7 +224,6 @@ async def match_groups_in_channel(state: State, channel: discord.channel, min: i
 
     # Save the groups to the history
     state.log_groups(groups)
-    save_to_file(state)
 
     logger.info("Done! Matched into %s groups.", len(groups))
 

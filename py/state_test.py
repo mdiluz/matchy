@@ -18,10 +18,10 @@ def test_simple_load_reload():
     with tempfile.TemporaryDirectory() as tmp:
         path = os.path.join(tmp, 'tmp.json')
         st = state.load_from_file(path)
-        state.save_to_file(st, path)
+        st._save_to_file()
 
         st = state.load_from_file(path)
-        state.save_to_file(st, path)
+        st._save_to_file()
         st = state.load_from_file(path)
 
 
@@ -30,13 +30,13 @@ def test_authscope():
     with tempfile.TemporaryDirectory() as tmp:
         path = os.path.join(tmp, 'tmp.json')
         st = state.load_from_file(path)
-        state.save_to_file(st, path)
+        st._save_to_file()
 
         assert not st.get_user_has_scope(1, state.AuthScope.MATCHER)
 
         st = state.load_from_file(path)
         st.set_user_scope(1, state.AuthScope.MATCHER)
-        state.save_to_file(st, path)
+        st._save_to_file()
 
         st = state.load_from_file(path)
         assert st.get_user_has_scope(1, state.AuthScope.MATCHER)
@@ -50,13 +50,13 @@ def test_channeljoin():
     with tempfile.TemporaryDirectory() as tmp:
         path = os.path.join(tmp, 'tmp.json')
         st = state.load_from_file(path)
-        state.save_to_file(st, path)
+        st._save_to_file()
 
         assert not st.get_user_active_in_channel(1, "2")
 
         st = state.load_from_file(path)
         st.set_user_active_in_channel(1, "2", True)
-        state.save_to_file(st, path)
+        st._save_to_file()
 
         st = state.load_from_file(path)
         assert st.get_user_active_in_channel(1, "2")
