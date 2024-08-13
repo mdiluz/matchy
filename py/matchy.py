@@ -6,9 +6,9 @@ import discord
 from discord.ext import commands
 import config
 import state
-from matchy_cog import MatchyCog
-from owner_cog import OwnerCog
-import match_button
+from cogs.matchy_cog import MatchyCog
+from cogs.owner_cog import OwnerCog
+import cogs.match_button as match_button
 
 State = state.load_from_file()
 
