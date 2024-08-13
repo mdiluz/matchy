@@ -77,7 +77,6 @@ _MIGRATIONS = [
 
 class AuthScope(str):
     """Various auth scopes"""
-    OWNER = "owner"
     MATCHER = "matcher"
 
 
@@ -239,7 +238,7 @@ class State():
         """
         user = self._users.get(str(id), {})
         scopes = user.get(_Key.SCOPES, [])
-        return AuthScope.OWNER in scopes or scope in scopes
+        return scope in scopes
 
     def set_user_active_in_channel(self, id: str, channel_id: str, active: bool = True):
         """Set a user as active (or not) on a given channel"""
