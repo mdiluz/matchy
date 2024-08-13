@@ -13,6 +13,10 @@ logger = logging.getLogger("state")
 logger.setLevel(logging.INFO)
 
 
+# Location of the default state file
+_STATE_FILE = "state.json"
+
+
 # Warning: Changing any of the below needs proper thought to ensure backwards compatibility
 _VERSION = 4
 
@@ -373,7 +377,7 @@ def _migrate(dict: dict):
         dict[_Key.VERSION] = _VERSION
 
 
-def load_from_file(file: str) -> State:
+def load_from_file(file: str = _STATE_FILE) -> State:
     """
     Load the state from a file
     Apply any required migrations
@@ -393,6 +397,6 @@ def load_from_file(file: str) -> State:
     return st
 
 
-def save_to_file(state: State, file: str):
+def save_to_file(state: State, file: str = _STATE_FILE):
     """Saves the state out to a file"""
     files.save(file, state.dict_internal_copy)
