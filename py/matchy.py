@@ -104,17 +104,18 @@ async def leave(interaction: discord.Interaction):
 @bot.tree.command(description="Pause your matching in this channel for a number of days")
 @commands.guild_only()
 @app_commands.describe(days="Days to pause for (defaults to 7)")
-async def pause(interaction: discord.Interaction, days: int = None):
+async def pause(interaction: discord.Interaction, days: int | None = None):
     logger.info("Handling /pause in %s %s from %s with days=%s",
                 interaction.guild.name, interaction.channel, interaction.user.name, days)
 
-    if not days:  # Default to a week
+    if days is None:  # Default to a week
         days = 7
+    until = datetime.now() + timedelta(days=days)
     State.set_user_paused_in_channel(
-        interaction.user.id, interaction.channel.id, days)
+        interaction.user.id, interaction.channel.id, until)
     state.save_to_file(State, STATE_FILE)
     await interaction.response.send_message(
-        f"Sure thing {interaction.user.mention}. Paused you for {days} days!", ephemeral=True, silent=True)
+        f"Sure thing {interaction.user.mention}. Paused you until {util.format_day(until)}!", ephemeral=True, silent=True)
 
 
 @bot.tree.command(description="List the matchees for this channel")
@@ -126,7 +127,7 @@ async def list(interaction: discord.Interaction):
     matchees = get_matchees_in_channel(interaction.channel)
     mentions = [m.mention for m in matchees]
     msg = "Current matchees in this channel:\n" + \
-        f"{', '.join(mentions[:-1])} and {mentions[-1]}"
+        f"{util.format_list(mentions)}"
 
     tasks = State.get_channel_match_tasks(interaction.channel.id)
     for (day, hour, min) in tasks:
