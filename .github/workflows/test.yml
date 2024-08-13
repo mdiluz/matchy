@@ -20,7 +20,7 @@ jobs:
         python -m pip install -r requirements.txt
     - name: Run tests
       run: |
-        bash bin/test.sh
+        python scripts/test.py
     - name: Update release branch
       if: github.ref == 'refs/heads/main'
       run: |
