@@ -94,7 +94,6 @@ State is stored locally in a `state.json` file. This will be created by the bot.
 
 ## TODO
 * Implement better tests to the discordy parts of the codebase
-* Rethink the matcher scope, seems like maybe this could be simpler or removed
 * Implement a .json file upgrade test
 * Track if matches were successful
 * Improve the weirdo
