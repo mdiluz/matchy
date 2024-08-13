@@ -6,35 +6,60 @@ Matchy matches matchees.
 Matchy is a Discord bot that groups up users for fun and vibes. Matchy can be installed on your server by clicking [here](https://discord.com/oauth2/authorize?client_id=1270849346987884696).
 
 ## Commands
-Unless otherwise specified all commands are only usable in channels.
+Matchy is mostly managed with commands in server channels. These are all listed below.
 
-### Usable by anyone
+### User commands
 #### /join and /leave
-Allows users to sign up and leave the group matching in the channel the command is used
+Allows users to sign up and leave the group matching in the channel the command is used.
 
 #### /pause [days: int(7)]
 Allows users to pause their matching in a channel for a given number of days. Users can use `/join` to re-join before the end of that time.
 
 #### /list
-List the current matchees in the channel as well as any current scheduled runes.
+List the current matchees in the channel as well as any current scheduled match runs.
 
-### Usable by "matchers"
+### Matcher commands
+Only usable by users with the `matcher` scope.
+
 #### /match [group_min: int(3)]
 Matches groups of users in a channel and offers a button to pose those groups to the channel to users with `matcher` auth scope. Tracks historical matches and attempts to match users to make new connections with people with divergent roles, in an attempt to maximise diversity.
 
 #### /schedule [group_min: int(3)] [weekday: int(0)] [hour: int(9)] [cancel: bool(False)]
 Allows a matcher to set a weekly schedule for matches in the channel, cancel can be used to remove a scheduled run
 
-### Usable by "owners"
-#### $sync and $close
-Reloads the config and syncs commands, or closes down the bot. Unlike all other commands these are usable in DMs with the bot user.
+### Admin commands
+Only usable by users with the `owner` scope. Only usable in a DM with the bot user.
 
-## Dependencies
+#### $sync and $close
+Syncs bot commands and reloads the state file, or closes down the bot. 
+
+## Development
+Current development is on Linux, though running on Mac or Windows should work fine, although some scripts are currently bash.
+
+### Dependencies
 * `python3` - Obviously, ideally 3.11
 * `venv` - Used for the python virtual env, specs in `requirements.txt`
 
-## Config
-Matchy is configured by a `config.json` file that takes this format:
+### Getting Started
+```
+git clone git@github.com:mdiluz/matchy.git
+cd matchy
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+VSCode can then be configured to use this new `.venv` and is the recommended way to develop.
+
+### Tests
+Python tests are written to use `pytest` and cover most internal functionality. Tests can be run in the same way as in the Github Actions with [`bin/test.sh`](`bin/test.sh`), which lints all python code and runs any tests with `pytest`.
+
+#### Coverage
+A helper script [`bin/coverage.sh`](bin/coverage.sh) is available to generate a html view on current code coverage.
+
+## Hosting
+
+### Config
+Matchy is configured by a required `config.json` file that takes this format:
 ```json
 {
     "version" : 1,
@@ -50,10 +75,25 @@ Matchy is configured by a `config.json` file that takes this format:
     }
 }
 ```
-Only token and version are required. See [`py/config.py`](py/config.py) for explanations for any of these.
+Only token and version are required. To generate bot token for development see [this discord.py guide](https://discordpy.readthedocs.io/en/stable/discord.html).
+
+See [`py/config.py`](py/config.py) for explanations for any extra settings here.
+
+### Running
+It is recommended to only ever run the `release` branch in production, as this branch has passed the tests.
+
+Running the bot can be as simple as `python3 bin/matchy.py`, but a [`bin/run.py`](bin/run.py) script is provided to update with `git pull`, enter the `.venv`, install new `pip` dependencies and run the bot. 
+
+The following command can be used to execute `run.sh` command on a loop, allowing the bot to be updated with a simple `$close` command from an owner, exiting the loop if the bot throws any fatal errors.
+```
+while ./bin/run.sh; end
+```
+
+### State
+State is stored locally in a `state.json` file. This will be created by the bot. This stores historical information on users, maching schedules, user auth scopes and more. See [`py/state.py`](py/state.py) for schema information if you need to inspect it.
 
 ## TODO
 * Write integration tests (maybe with [dpytest](https://dpytest.readthedocs.io/en/latest/tutorials/getting_started.html)?)
 * Implement a .json file upgrade test
-* Track if meets were sucessful
+* Track if matches were successful
 * Improve the weirdo
