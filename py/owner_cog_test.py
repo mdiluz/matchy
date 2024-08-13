@@ -20,7 +20,7 @@ async def bot():
     b = commands.Bot(command_prefix="$",
                      intents=intents)
     await b._async_setup_hook()
-    await b.add_cog(OwnerCog(b, state.State()))
+    await b.add_cog(OwnerCog(b, state.State(state._EMPTY_DICT)))
     dpytest.configure(b)
     yield b
     await dpytest.empty_queue()

@@ -174,7 +174,7 @@ def datetime_to_ts(ts: datetime) -> str:
 
 
 class State():
-    def __init__(self, data: dict = _EMPTY_DICT):
+    def __init__(self, data: dict):
         """Initialise and validate the state"""
         self.validate(data)
         self._dict = copy.deepcopy(data)
