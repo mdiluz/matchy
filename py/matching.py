@@ -166,7 +166,7 @@ def iterate_all_shifts(list: list):
 
 
 def members_to_groups(matchees: list[Member],
-                      state: State = State(),
+                      state: State,
                       per_group: int = 3,
                       allow_fallback: bool = False) -> list[list[Member]]:
     """Generate the groups from the set of matchees"""
