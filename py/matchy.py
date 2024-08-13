@@ -122,7 +122,8 @@ async def list(interaction: discord.Interaction):
         next_run = util.get_next_datetime(day, hour)
         date_str = util.format_day(next_run)
         msg += f"\nNext scheduled for {date_str} at {hour:02d}:00"
-        + "with {min} members per group"
+        msg += f" with {min} members per group"
+
 
     await interaction.response.send_message(msg, ephemeral=True, silent=True)
 
