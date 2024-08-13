@@ -2,9 +2,10 @@ import discord
 import discord.ext.commands as commands
 import pytest
 import pytest_asyncio
+import state
 import discord.ext.test as dpytest
 
-from owner_cog import OwnerCog
+from cogs.owner_cog import OwnerCog
 
 # Primarily borrowing from https://dpytest.readthedocs.io/en/latest/tutorials/using_pytest.html
 # TODO: Test more somehow, though it seems like dpytest is pretty incomplete
@@ -19,7 +20,7 @@ async def bot():
     b = commands.Bot(command_prefix="$",
                      intents=intents)
     await b._async_setup_hook()
-    await b.add_cog(OwnerCog(b))
+    await b.add_cog(OwnerCog(b, state.State()))
     dpytest.configure(b)
     yield b
     await dpytest.empty_queue()
@@ -32,3 +33,6 @@ async def test_must_be_owner(bot):
 
     with pytest.raises(commands.errors.NotOwner):
         await dpytest.message("$close")
+
+    with pytest.raises(commands.errors.NotOwner):
+        await dpytest.message("$grant")
