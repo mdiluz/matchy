@@ -13,8 +13,7 @@ logger.setLevel(logging.INFO)
 
 # Increment when adjusting the custom_id so we don't confuse old users
 _MATCH_BUTTON_CUSTOM_ID_VERSION = 1
-_MATCH_BUTTON_CUSTOM_ID_PREFIX = f'match:v{
-    _MATCH_BUTTON_CUSTOM_ID_VERSION}:'
+_MATCH_BUTTON_CUSTOM_ID_PREFIX = f'match:v{_MATCH_BUTTON_CUSTOM_ID_VERSION}:'
 
 
 class DynamicGroupButton(discord.ui.DynamicItem[discord.ui.Button],

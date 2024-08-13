@@ -8,7 +8,6 @@ import config
 import state
 from cogs.matchy_cog import MatchyCog
 from cogs.owner_cog import OwnerCog
-import cogs.match_button as match_button
 
 State = state.load_from_file()
 
