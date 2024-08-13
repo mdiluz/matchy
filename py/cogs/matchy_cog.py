@@ -7,7 +7,7 @@ from discord import app_commands
 from discord.ext import commands, tasks
 from datetime import datetime, timedelta, time
 
-import match_button
+import cogs.match_button as match_button
 import matching
 from state import State, save_to_file, AuthScope
 import util
@@ -25,6 +25,7 @@ class MatchyCog(commands.Cog):
     async def on_ready(self):
         """Bot is ready and connected"""
         self.run_hourly_tasks.start()
+        self.bot.add_dynamic_items(match_button.DynamicGroupButton)
         activity = discord.Game("/join")
         await self.bot.change_presence(status=discord.Status.online, activity=activity)
         logger.info("Bot is up and ready!")
@@ -79,7 +80,8 @@ class MatchyCog(commands.Cog):
         logger.info("Handling /list command in %s %s from %s",
                     interaction.guild.name, interaction.channel, interaction.user.name)
 
-        matchees = matching.get_matchees_in_channel(self.state, interaction.channel)
+        matchees = matching.get_matchees_in_channel(
+            self.state, interaction.channel)
         mentions = [m.mention for m in matchees]
         msg = "Current matchees in this channel:\n" + \
             f"{util.format_list(mentions)}"
@@ -186,7 +188,7 @@ class MatchyCog(commands.Cog):
         else:
             # Let a non-matcher know why they don't have the button
             msg += f"\n\nYou'll need the {AuthScope.MATCHER}"
-            + " scope to post this to the channel, sorry!"
+            msg += " scope to post this to the channel, sorry!"
 
         await interaction.response.send_message(msg, ephemeral=True, silent=True, view=view)
 
@@ -195,7 +197,7 @@ class MatchyCog(commands.Cog):
     @tasks.loop(time=[time(hour=h) for h in range(24)])
     async def run_hourly_tasks(self):
         """Run any hourly tasks we have"""
-        
+
         for (channel, min) in self.state.get_active_match_tasks():
             logger.info("Scheduled match task triggered in %s", channel)
             msg_channel = self.bot.get_channel(int(channel))

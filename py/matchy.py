@@ -27,8 +27,6 @@ bot = commands.Bot(command_prefix='$',
 async def setup_hook():
     await bot.add_cog(MatchyCog(bot, State))
     await bot.add_cog(OwnerCog(bot))
-    # TODO: This line feels like it should be in the cog?
-    bot.add_dynamic_items(match_button.DynamicGroupButton)
 
 
 @bot.event
