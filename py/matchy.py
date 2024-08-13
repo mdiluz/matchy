@@ -6,7 +6,8 @@ import discord
 from discord.ext import commands
 import config
 import state
-import cog
+from matchy_cog import MatchyCog
+from owner_cog import OwnerCog
 import match_button
 
 State = state.load_from_file()
@@ -24,7 +25,8 @@ bot = commands.Bot(command_prefix='$',
 
 @bot.event
 async def setup_hook():
-    await bot.add_cog(cog.MatchyCog(bot, State))
+    await bot.add_cog(MatchyCog(bot, State))
+    await bot.add_cog(OwnerCog(bot))
     # TODO: This line feels like it should be in the cog?
     bot.add_dynamic_items(match_button.DynamicGroupButton)
 
@@ -32,38 +34,6 @@ async def setup_hook():
 @bot.event
 async def on_ready():
     logger.info("Logged in as %s", bot.user.name)
-
-
-def owner_only(ctx: commands.Context) -> bool:
-    """Checks the author is an owner"""
-    return State.get_user_has_scope(ctx.message.author.id, state.AuthScope.OWNER)
-
-
-@bot.command()
-@commands.dm_only()
-@commands.check(owner_only)
-async def sync(ctx: commands.Context):
-    """Handle sync command"""
-    msg = await ctx.reply("Reloading state...", ephemeral=True)
-    global State
-    State = state.load_from_file()
-    logger.info("Reloaded state")
-
-    await msg.edit(content="Syncing commands...")
-    synced = await bot.tree.sync()
-    logger.info("Synced %s command(s)", len(synced))
-
-    await msg.edit(content="Done!")
-
-
-@bot.command()
-@commands.dm_only()
-@commands.check(owner_only)
-async def close(ctx: commands.Context):
-    """Handle restart command"""
-    await ctx.reply("Closing bot...", ephemeral=True)
-    logger.info("Closing down the bot")
-    await bot.close()
 
 
 if __name__ == "__main__":
