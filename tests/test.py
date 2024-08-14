@@ -4,7 +4,7 @@ from flake8.main.application import Application
 
 # Run flake
 app = Application()
-ret = app.run(["--max-line-length", "120", "py/", "scripts/"])
+ret = app.run(["--max-line-length", "120", "matchy/", "tests/"])
 flake_exitcode = app.exit_code()
 print(flake_exitcode)
 

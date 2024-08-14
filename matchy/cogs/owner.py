@@ -3,13 +3,13 @@ Owner bot cog
 """
 import logging
 from discord.ext import commands
-from state import State, AuthScope
+from matchy.files.state import State, AuthScope
 
 logger = logging.getLogger("owner")
 logger.setLevel(logging.INFO)
 
 
-class OwnerCog(commands.Cog):
+class Cog(commands.Cog):
     def __init__(self, bot: commands.Bot, state: State):
         self._bot = bot
         self._state = state

@@ -42,7 +42,7 @@ git checkout -b [feature-branch-name]
 VSCode can be configured to use this new `.venv` and is the recommended way to develop.
 
 ### Tests
-Python tests are written to use `pytest` and cover most internal functionality. Tests can be run in the same way as in the Github Actions with [`scripts/test.py`](`scripts/test.py`), which lints all python code and runs any tests with `pytest`. A helper script [`scripts/test-cov.py`](scripts/test-cov.py) is available to generate a html view on current code coverage.
+Python tests are written to use `pytest` and cover most internal functionality. Tests can be run in the same way as in the Github Actions with [`test.py`](`tests/test.py`), which lints all python code and runs any tests with `pytest`. A helper script [`test-cov.py`](tests/test-cov.py) is available to generate a html view on current code coverage.
 
 ## Hosting
 
@@ -63,9 +63,9 @@ Matchy is configured by an optional `$MATCHY_CONFIG` envar or a `.matchy/config.
 ```
 Only the version is required.
 
-See [`py/config.py`](py/config.py) for explanations for any extra settings here.
+See [`config.py`](matchy/files/config.py) for explanations for any extra settings here.
 
-_State_ is stored locally in a `.matchy/state.json` file. This will be created by the bot. This stores historical information on users, maching schedules, user auth scopes and more. See [`py/state.py`](py/state.py) for schema information if you need to inspect it.
+_State_ is stored locally in a `.matchy/state.json` file. This will be created by the bot. This stores historical information on users, maching schedules, user auth scopes and more. See [`state.py`](matchy/files/state.py) for schema information if you need to inspect it.
 
 ### Secrets
 The `TOKEN` envar is required run the bot. It's recommended this is placed in a local `.env` file. To generate bot token for development see [this discord.py guide](https://discordpy.readthedocs.io/en/stable/discord.html).

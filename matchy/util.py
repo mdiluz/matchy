@@ -9,11 +9,6 @@ def get_day_with_suffix(day):
         return str(day) + {1: 'st', 2: 'nd', 3: 'rd'}.get(day % 10, 'th')
 
 
-def format_today() -> str:
-    """Format the current datetime"""
-    return format_day(datetime.now())
-
-
 def format_day(time: datetime) -> str:
     """Format the a given datetime"""
     num = get_day_with_suffix(time.day)

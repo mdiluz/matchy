@@ -1,11 +1,11 @@
 """Utility functions for matchy"""
 import logging
 import discord
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Protocol, runtime_checkable
-from state import State, ts_to_datetime
+from matchy.files.state import State, ts_to_datetime
 import util
-import config
+import matchy.files.config as config
 
 
 class _ScoreFactors(int):
@@ -147,14 +147,6 @@ def attempt_create_groups(matchees: list[Member],
             return None
 
     return groups
-
-
-def datetime_range(start_time: datetime, increment: timedelta, end: datetime):
-    """Yields a datetime range with a given increment"""
-    current = start_time
-    while current <= end or end is None:
-        yield current
-        current += increment
 
 
 def iterate_all_shifts(list: list):

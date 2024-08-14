@@ -8,7 +8,7 @@
             "name": "Python Debugger: Matchy",
             "type": "debugpy",
             "request": "launch",
-            "program": "py/matchy.py",
+            "program": "matchy.py",
             "console": "integratedTerminal"
         }
     ]
