@@ -4,7 +4,7 @@ import discord
 from datetime import datetime
 from typing import Protocol, runtime_checkable
 from matchy.files.state import State, ts_to_datetime
-import util
+import matchy.util as util
 import matchy.files.config as config
 
 
