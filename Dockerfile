@@ -17,4 +17,4 @@ RUN --mount=type=cache,target=/var/cache/buildkit/pip \
     pip install --find-links /wheels --no-index -r requirements.txt
 
 COPY . .
-CMD ["python", "py/matchy.py"]
+CMD ["python", "matchy.py"]

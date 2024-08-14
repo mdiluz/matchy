@@ -7,16 +7,16 @@ from discord import app_commands
 from discord.ext import commands, tasks
 from datetime import datetime, timedelta, time
 
-import cogs.match_button as match_button
+import matchy.views.match as match
 import matching
-from state import State, AuthScope
+from matchy.files.state import State, AuthScope
 import util
 
 logger = logging.getLogger("cog")
 logger.setLevel(logging.INFO)
 
 
-class MatchyCog(commands.Cog):
+class Cog(commands.Cog):
     def __init__(self, bot: commands.Bot, state: State):
         self.bot = bot
         self.state = state
@@ -25,7 +25,7 @@ class MatchyCog(commands.Cog):
     async def on_ready(self):
         """Bot is ready and connected"""
         self.run_hourly_tasks.start()
-        self.bot.add_dynamic_items(match_button.DynamicGroupButton)
+        self.bot.add_dynamic_items(match.DynamicGroupButton)
         activity = discord.Game("/join")
         await self.bot.change_presence(status=discord.Status.online, activity=activity)
         logger.info("Bot is up and ready!")
@@ -180,7 +180,7 @@ class MatchyCog(commands.Cog):
             # Otherwise set up the button
             msg += "\n\nClick the button to match up groups and send them to the channel.\n"
             view = discord.ui.View(timeout=None)
-            view.add_item(match_button.DynamicGroupButton(members_min))
+            view.add_item(match.DynamicGroupButton(members_min))
         else:
             # Let a non-matcher know why they don't have the button
             msg += f"\n\nYou'll need the {AuthScope.MATCHER}"

@@ -4,7 +4,7 @@ from datetime import datetime
 from schema import Schema, Use, Optional
 from collections.abc import Generator
 from typing import Protocol
-import files
+import matchy.files.ops as ops
 import copy
 import logging
 from contextlib import contextmanager
@@ -351,6 +351,7 @@ class State():
             # Set the value
             channel[key] = value
 
+    # TODO: Make this a decorator?
     @contextmanager
     def _safe_wrap_write(self):
         """Safely run any function wrapped in a validate"""
@@ -369,7 +370,7 @@ class State():
 
     def _save_to_file(self):
         """Saves the state out to the chosen file"""
-        files.save(self._file, self.dict_internal_copy)
+        ops.save(self._file, self.dict_internal_copy)
 
 
 def _migrate(dict: dict):
@@ -390,12 +391,12 @@ def load_from_file(file: str) -> State:
 
     # If there's a file load it and try to migrate
     if os.path.isfile(file):
-        loaded = files.load(file)
+        loaded = ops.load(file)
         _migrate(loaded)
 
     st = State(loaded, file)
 
     # Save out the migrated (or new) file
-    files.save(file, st._dict)
+    ops.save(file, st._dict)
 
     return st

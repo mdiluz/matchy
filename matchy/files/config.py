@@ -1,6 +1,6 @@
 """Very simple config loading library"""
 from schema import Schema, Use, Optional
-import files
+import matchy.files.ops as ops
 import os
 import logging
 import json
@@ -137,7 +137,7 @@ def _load() -> _Config:
     else:
         # Otherwise try the file
         if os.path.isfile(_FILE):
-            loaded = files.load(_FILE)
+            loaded = ops.load(_FILE)
             logger.info("Config loaded from %s", _FILE)
         else:
             loaded = _EMPTY_DICT

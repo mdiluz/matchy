@@ -1,7 +1,7 @@
 """
     Test functions for the state module
 """
-import state
+import matchy.files.state as state
 import tempfile
 import os
 
