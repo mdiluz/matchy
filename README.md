@@ -77,7 +77,7 @@ An example for how to do this may look like this:
 ```bash
 docker run -v --env-file=.env ./.matchy:/usr/src/app/.matchy ghcr.io/mdiluz/matchy:latest
 ```
-A (`docker-compose.yml`)[docker-compose.yml] file is also provided that essentially performs the above when used with `docker compose up --exit-code-from matchy`. A `MATCHY_DATA` envar can be used in conjunction with compose to set a custom local path for the location of the data file. 
+A [`docker-compose.yml`](docker-compose.yml) file is also provided that essentially performs the above when used with `docker compose up --exit-code-from matchy`. A `MATCHY_DATA` envar can be used in conjunction with compose to set a custom local path for the location of the data file. 
 
 ## TODO
 * Implement better tests to the discordy parts of the codebase
