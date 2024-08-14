@@ -3,3 +3,5 @@ config.json
 state.json
 .venv
 .coverage
+.matchy
+.env

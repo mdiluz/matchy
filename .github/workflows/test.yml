@@ -21,12 +21,3 @@ jobs:
     - name: Run tests
       run: |
         python scripts/test.py
-    - name: Update release branch
-      if: github.ref == 'refs/heads/main'
-      run: |
-        git config --local user.email "[hidden]"
-        git config --local user.name "CI"
-        git fetch origin
-        git checkout -b release origin/release
-        git merge origin/main -X theirs
-        git push origin release

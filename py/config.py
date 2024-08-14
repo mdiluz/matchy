@@ -3,18 +3,20 @@ from schema import Schema, Use, Optional
 import files
 import os
 import logging
+import json
 
 logger = logging.getLogger("config")
 logger.setLevel(logging.INFO)
 
-_FILE = "config.json"
+# Envar takes precedent
+_ENVAR = "MATCHY_CONFIG"
+_FILE = ".matchy/config.json"
 
 # Warning: Changing any of the below needs proper thought to ensure backwards compatibility
-_VERSION = 1
+_VERSION = 2
 
 
 class _Key():
-    TOKEN = "token"
     VERSION = "version"
 
     MATCH = "match"
@@ -27,15 +29,13 @@ class _Key():
 
     # Removed
     _OWNERS = "owners"
+    _TOKEN = "token"
 
 
 _SCHEMA = Schema(
     {
         # The current version
         _Key.VERSION: Use(int),
-
-        # Discord bot token
-        _Key.TOKEN: Use(str),
 
         # Settings for the match algorithmn, see matching.py for explanations on usage
         Optional(_Key.MATCH): {
@@ -51,7 +51,6 @@ _SCHEMA = Schema(
 )
 
 _EMPTY_DICT = {
-    _Key.TOKEN: "",
     _Key.VERSION: _VERSION
 }
 
@@ -59,15 +58,23 @@ _EMPTY_DICT = {
 def _migrate_to_v1(d: dict):
     # Owners moved to History in v1
     # Note: owners will be required to be re-added to the state.json
-    owners = d.pop(_Key._OWNERS)
-    logger.warning(
-        "Migration removed owners from config, these must be re-added to the state.json")
-    logger.warning("Owners: %s", owners)
+    if _Key._OWNERS in d:
+        owners = d.pop(_Key._OWNERS)
+        logger.warning(
+            "Migration removed owners from config, these must be re-added to the state.json")
+        logger.warning("Owners: %s", owners)
+
+
+def _migrate_to_v2(d: dict):
+    # Token moved to the environment
+    if _Key._TOKEN in d:
+        del d[_Key._TOKEN]
 
 
 # Set of migration functions to apply
 _MIGRATIONS = [
-    _migrate_to_v1
+    _migrate_to_v1,
+    _migrate_to_v2
 ]
 
 
@@ -105,7 +112,7 @@ class _Config():
 
     @property
     def score_factors(self) -> _ScoreFactors:
-        return _ScoreFactors(self._dict.setdefault(_Key.SCORE_FACTORS, {}))
+        return _ScoreFactors(self._dict.get(_Key.SCORE_FACTORS, {}))
 
 
 def _migrate(dict: dict):
@@ -116,20 +123,30 @@ def _migrate(dict: dict):
         dict["version"] = _VERSION
 
 
-def _load_from_file(file: str = _FILE) -> _Config:
+def _load() -> _Config:
     """
-    Load the state from a file
+    Load the state from an envar or file
     Apply any required migrations
     """
-    loaded = _EMPTY_DICT
-    if os.path.isfile(file):
-        loaded = files.load(file)
-        _migrate(loaded)
+
+    # Try the envar first
+    envar = os.environ.get(_ENVAR)
+    if envar:
+        loaded = json.loads(envar)
+        logger.info("Config loaded from $%s", _ENVAR)
     else:
-        logger.warning("No %s file found, bot cannot run!", file)
+        # Otherwise try the file
+        if os.path.isfile(_FILE):
+            loaded = files.load(_FILE)
+            logger.info("Config loaded from %s", _FILE)
+        else:
+            loaded = _EMPTY_DICT
+            logger.warning("No %s file found, using defaults", _FILE)
+
+    _migrate(loaded)
     return _Config(loaded)
 
 
 # Core config for users to use
-# Singleton as there should only be one, and it's global
-Config = _load_from_file()
+# Singleton as there should only be one, it's static, and global
+Config = _load()

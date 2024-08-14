@@ -4,12 +4,12 @@
 import logging
 import discord
 from discord.ext import commands
-import config
+import os
 from state import load_from_file
 from cogs.matchy_cog import MatchyCog
 from cogs.owner_cog import OwnerCog
 
-_STATE_FILE = "state.json"
+_STATE_FILE = ".matchy/state.json"
 state = load_from_file(_STATE_FILE)
 
 logger = logging.getLogger("matchy")
@@ -35,4 +35,6 @@ async def on_ready():
 
 if __name__ == "__main__":
     handler = logging.StreamHandler()
-    bot.run(config.Config.token, log_handler=handler, root_logger=True)
+    token = os.environ.get("TOKEN", None)
+    assert token, "$TOKEN required"
+    bot.run(token, log_handler=handler, root_logger=True)

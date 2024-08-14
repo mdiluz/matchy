@@ -3,71 +3,52 @@ Matchy matches matchees.
 
 ![Tests](https://github.com/mdiluz/matchy/actions/workflows/test.yml/badge.svg)
 
-Matchy is a Discord bot that groups up users for fun and vibes. Matchy can be installed on your server by clicking [here](https://discord.com/oauth2/authorize?client_id=1270849346987884696).
+Matchy is a Discord bot that groups up users for fun and vibes. Matchy can be installed on your server by clicking [here](https://discord.com/oauth2/authorize?client_id=1270849346987884696). Matchy only allows authorised users to trigger posts in channels.
 
 ## Commands
-Matchy is mostly managed with commands in server channels. These are all listed below.
+Matchy supports a bunch of user, `matcher` and bot owner commands. `/` commands are available in any channel the bot has access to, and `$` commands are only available in DMs.
 
-### User commands
-#### /join and /leave
-Allows users to sign up and leave the group matching in the channel the command is used.
-
-#### /pause [days: int(7)]
-Allows users to pause their matching in a channel for a given number of days. Users can use `/join` to re-join before the end of that time.
-
-#### /list
-List the current matchees in the channel as well as any current scheduled match runs.
-
-### Matcher commands
-Only usable by users with the `matcher` scope.
-
-#### /match [group_min: int(3)]
-Matches groups of users in a channel and offers a button to pose those groups to the channel to users with `matcher` auth scope. Tracks historical matches and attempts to match users to make new connections with people with divergent roles, in an attempt to maximise diversity.
-
-#### /schedule [group_min: int(3)] [weekday: int(0)] [hour: int(9)] [cancel: bool(False)]
-Allows a matcher to set a weekly schedule for matches in the channel, cancel can be used to remove a scheduled run
-
-### Admin commands
-Only usable by users with the `owner` scope. Only usable in a DM with the bot user.
-
-#### $sync and $close
-Syncs bot commands or closes down the bot. 
-
-#### $grant [user: int]
-Grant a given user the matcher scope to allow them to use `/match` and `/schedule`.
+| Command   | Permissions | Description                                            |
+|-----------|-------------|--------------------------------------------------------|
+| /join     | user        | Joins the matchee list                                 |
+| /leave    | user        | Leaves the matchee list                                |
+| /pause    | user        | Pauses the user for `days: int` days                   |
+| /list     | user        | Lists the current matchees and scheduled matches       |
+| /match    | user        | Shares a preview of the matchee groups of size `group_min: int` with the user, offers a button to post the match to `matcher` users                 |
+| /schedule | `matcher`   | Shedules a match every week with `group_min: int` users on `weekday: int` day and at `hour: int` hour. Can pass `cancel: True` to stop the schedule |
+| $sync     | bot owner   | Syncs bot command data with the discord servers        |
+| $close    | bot owner   | Closes the bot connection so the bot quits safely      |
+| $grant    | bot owner   | Grants matcher to a given user (ID)                    |
 
 ## Development
-Current development is on Linux, though running on Mac or Windows should work fine.
+Development has been on on Linux so far, but running on Mac or Windows _should_ work fine. Please report any issues found.
 
 ### Dependencies
 * `python3` - Obviously, ideally 3.11
 * `venv` - Used for the python virtual env, specs in `requirements.txt`
+* `docker` - Optional, for deployment
 
 ### Getting Started
-```
+```bash
 git clone git@github.com:mdiluz/matchy.git
 cd matchy
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+git checkout -b [feature-branch-name]
 ```
-VSCode can then be configured to use this new `.venv` and is the recommended way to develop.
+VSCode can be configured to use this new `.venv` and is the recommended way to develop.
 
 ### Tests
-Python tests are written to use `pytest` and cover most internal functionality. Tests can be run in the same way as in the Github Actions with [`scripts/test.py`](`scripts/test.py`), which lints all python code and runs any tests with `pytest`.
-
-#### Coverage
-A helper script [`scripts/test-cov.py`](scripts/test-cov.py) is available to generate a html view on current code coverage.
+Python tests are written to use `pytest` and cover most internal functionality. Tests can be run in the same way as in the Github Actions with [`scripts/test.py`](`scripts/test.py`), which lints all python code and runs any tests with `pytest`. A helper script [`scripts/test-cov.py`](scripts/test-cov.py) is available to generate a html view on current code coverage.
 
 ## Hosting
 
-### Config
-Matchy is configured by a required `config.json` file that takes this format:
+### Config and State
+Matchy is configured by an optional `$MATCHY_CONFIG` envar or a `.matchy/config.json` file that takes this format:
 ```json
 {
-    "version" : 1,
-    "token" : "<<github bot token>>",
-
+    "version" : 2,
     "match" : {
         "score_factors": {
             "repeat_role" : 4,
@@ -78,22 +59,23 @@ Matchy is configured by a required `config.json` file that takes this format:
     }
 }
 ```
-Only token and version are required. To generate bot token for development see [this discord.py guide](https://discordpy.readthedocs.io/en/stable/discord.html).
+Only the version is required.
 
 See [`py/config.py`](py/config.py) for explanations for any extra settings here.
 
-### Running
-It is recommended to only ever run the `release` branch in production, as this branch has passed the tests.
+_State_ is stored locally in a `.matchy/state.json` file. This will be created by the bot. This stores historical information on users, maching schedules, user auth scopes and more. See [`py/state.py`](py/state.py) for schema information if you need to inspect it.
 
-Running the bot can be as simple as `python3 scripts/matchy.py`, but a [`scripts/run.py`](scripts/run.py) script is provided to update to the latest release, install any new `pip` dependencies and run the bot. 
+### Secrets
+The `TOKEN` envar is required run the bot. It's recommended this is placed in a local `.env` file. To generate bot token for development see [this discord.py guide](https://discordpy.readthedocs.io/en/stable/discord.html).
 
-The following command can be used to execute `run.py` on a loop, allowing the bot to be updated with a simple `$close` command from an `owner` user, but will still exit the loop if the bot throws a fatal error.
+### Docker
+Docker and Compose configs are provided, with the latest release tagged as  `ghcr.io/mdiluz/matchy:latest`. A location for persistent data is stil required so some persistent volume will need to be mapped into the container as `/usr/share/app/.matchy`.
+
+An example for how to do this may look like this:
+```bash
+docker run -v --env-file=.env ./.matchy:/usr/src/app/.matchy ghcr.io/mdiluz/matchy:latest
 ```
-while ./scripts/run.py; end
-```
-
-### State
-State is stored locally in a `state.json` file. This will be created by the bot. This stores historical information on users, maching schedules, user auth scopes and more. See [`py/state.py`](py/state.py) for schema information if you need to inspect it.
+A (`docker-compose.yml`)[docker-compose.yml] file is also provided that essentially performs the above when used with `docker compose up --exit-code-from matchy`. A `MATCHY_DATA` envar can be used in conjunction with compose to set a custom local path for the location of the data file. 
 
 ## TODO
 * Implement better tests to the discordy parts of the codebase
