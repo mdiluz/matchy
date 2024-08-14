@@ -1,6 +1,6 @@
 services:
   matchy:
-    image: ghcr.io/mdiluz/matchy:latest
+    image: ghcr.io/mdiluz/matchy:${MATCHY_TAG:-latest}
     env_file: ".env"
     volumes:
       - ${MATCHY_DATA:-./.matchy}:/usr/src/app/.matchy
