@@ -1,4 +1,4 @@
-FROM --platform=$TARGETPLATFORM python:3.12-slim
+FROM --platform=$TARGETPLATFORM python:3.11-slim
 LABEL org.opencontainers.image.source=https://github.com/mdiluz/matchy
 LABEL org.opencontainers.image.description="Matchy matches matchees"
 LABEL org.opencontainers.image.licenses=Unlicense
