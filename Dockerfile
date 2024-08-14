@@ -10,6 +10,7 @@ LABEL org.opencontainers.image.source=https://github.com/mdiluz/matchy
 LABEL org.opencontainers.image.description="Matchy matches matchees"
 LABEL org.opencontainers.image.licenses=Unlicense
 
+WORKDIR /usr/src/app
 COPY requirements.txt ./
 COPY --from=build /wheels /wheels
 RUN --mount=type=cache,target=/var/cache/buildkit/pip \
