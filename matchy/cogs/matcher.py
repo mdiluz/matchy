@@ -89,7 +89,7 @@ class MatcherCog(commands.Cog):
         for (day, hour, min) in tasks:
             next_run = util.get_next_datetime(day, hour)
             date_str = util.datetime_as_discord_time(next_run)
-            msg += f"\nNext scheduled for {date_str}"
+            msg += f"\nNext scheduled at {date_str}"
             msg += f" with {min} members per group"
 
         await interaction.response.send_message(msg, ephemeral=True, silent=True)
@@ -98,14 +98,12 @@ class MatcherCog(commands.Cog):
     @commands.guild_only()
     @app_commands.describe(members_min="Minimum matchees per match (defaults to 3)",
                            weekday="Day of the week to run this (defaults 0, Monday)",
-                           hour="Hour in the day (defaults to 9 utc)",
-                           cancel="Cancel the scheduled match at this time")
+                           hour="Hour in the day (defaults to 9 utc)")
     async def schedule(self,
                        interaction: discord.Interaction,
                        members_min: int | None = None,
                        weekday: int | None = None,
-                       hour: int | None = None,
-                       cancel: bool = False):
+                       hour: int | None = None):
         """Schedule a match using the input parameters"""
 
         # Set all the defaults
@@ -124,30 +122,36 @@ class MatcherCog(commands.Cog):
             return
 
         # Add the scheduled task and save
-        success = self.state.set_channel_match_task(
-            channel_id, members_min, weekday, hour, not cancel)
+        self.state.set_channel_match_task(
+            channel_id, members_min, weekday, hour)
 
         # Let the user know what happened
-        if not cancel:
-            logger.info("Scheduled new match task in %s with min %s weekday %s hour %s",
-                        channel_id, members_min, weekday, hour)
-            next_run = util.get_next_datetime(weekday, hour)
-            date_str = util.datetime_as_discord_time(next_run)
+        logger.info("Scheduled new match task in %s with min %s weekday %s hour %s",
+                    channel_id, members_min, weekday, hour)
+        next_run = util.get_next_datetime(weekday, hour)
+        date_str = util.datetime_as_discord_time(next_run)
 
-            await interaction.response.send_message(
-                f"Done :) Next run will be on {date_str}\n"
-                + "Cancel this by re-sending the command with cancel=True",
-                ephemeral=True, silent=True)
+        await interaction.response.send_message(
+            f"Done :) Next run will be at {date_str}",
+            ephemeral=True, silent=True)
 
-        elif success:
-            logger.info("Removed task in %s on weekday %s hour %s",
-                        channel_id, weekday, hour)
-            await interaction.response.send_message(
-                f"Done :) Schedule on day {weekday} and hour {hour} removed!", ephemeral=True, silent=True)
+    @app_commands.command(description="Cancel all scheduled matches in this channel")
+    @commands.guild_only()
+    async def cancel(self, interaction: discord.Interaction):
+        """Cancel scheduled matches in this channel"""
+        # Bail if not a matcher
+        if not self.state.get_user_has_scope(interaction.user.id, AuthScope.MATCHER):
+            await interaction.response.send_message("You'll need the 'matcher' scope to remove scheduled matches",
+                                                    ephemeral=True, silent=True)
+            return
 
-        else:
-            await interaction.response.send_message(
-                f"No schedule for this channel on day {weekday} and hour {hour} found :(", ephemeral=True, silent=True)
+        # Add the scheduled task and save
+        channel_id = str(interaction.channel.id)
+        self.state.remove_channel_match_tasks(channel_id)
+
+        await interaction.response.send_message(
+            "Done, all scheduled matches cleared in this channel!",
+            ephemeral=True, silent=True)
 
     @app_commands.command(description="Match up matchees")
     @commands.guild_only()
