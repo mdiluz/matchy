@@ -3,9 +3,8 @@ import logging
 import discord
 from datetime import datetime
 from typing import Protocol, runtime_checkable
-from matchy.files.state import State, ts_to_datetime
+from matchy.state import State, ts_to_datetime
 import matchy.util as util
-import matchy.files.config as config
 
 
 class _ScoreFactors(int):
@@ -15,14 +14,14 @@ class _ScoreFactors(int):
     """
 
     # Added for each role the matchee has that another group member has
-    REPEAT_ROLE = config.Config.score_factors.repeat_role or 2**2
+    REPEAT_ROLE = 2**2
     # Added for each member in the group that the matchee has already matched with
-    REPEAT_MATCH = config.Config.score_factors.repeat_match or 2**3
+    REPEAT_MATCH = 2**3
     # Added for each additional member over the set "per group" value
-    EXTRA_MEMBER = config.Config.score_factors.extra_member or 2**5
+    EXTRA_MEMBER = 2**5
 
     # Upper threshold, if the user scores higher than this they will not be placed in that group
-    UPPER_THRESHOLD = config.Config.score_factors.upper_threshold or 2**6
+    UPPER_THRESHOLD = 2**6
 
 
 logger = logging.getLogger("matching")
@@ -64,12 +63,6 @@ class Guild(Protocol):
     @property
     def roles(self) -> list[Role]:
         pass
-
-
-def members_to_groups_simple(matchees: list[Member], per_group: int) -> tuple[bool, list[list[Member]]]:
-    """Super simple group matching, literally no logic"""
-    num_groups = max(len(matchees)//per_group, 1)
-    return [matchees[i::num_groups] for i in range(num_groups)]
 
 
 def get_member_group_eligibility_score(member: Member,
@@ -149,14 +142,6 @@ def attempt_create_groups(matchees: list[Member],
     return groups
 
 
-def iterate_all_shifts(list: list):
-    """Yields each shifted variation of the input list"""
-    yield list
-    for _ in range(len(list)-1):
-        list = list[1:] + [list[0]]
-        yield list
-
-
 def members_to_groups(matchees: list[Member],
                       state: State,
                       per_group: int = 3,
@@ -173,7 +158,7 @@ def members_to_groups(matchees: list[Member],
     for oldest_relevant_datetime in state.get_history_timestamps(matchees) + [datetime.now()]:
 
         # Attempt with each starting matchee
-        for shifted_matchees in iterate_all_shifts(matchees):
+        for shifted_matchees in util.iterate_all_shifts(matchees):
 
             attempts += 1
             groups = attempt_create_groups(
@@ -187,7 +172,7 @@ def members_to_groups(matchees: list[Member],
     # If we've still failed, just use the simple method
     if allow_fallback:
         logger.info("Fell back to simple groups after %s attempt(s)", attempts)
-        return members_to_groups_simple(matchees, per_group)
+        return [matchees[i::num_groups] for i in range(num_groups)]
 
     # Simply assert false, this should never happen
     # And should be caught by tests
@@ -200,10 +185,8 @@ async def match_groups_in_channel(state: State, channel: discord.channel, min: i
 
     # Send the groups
     for group in groups:
-
         message = await channel.send(
             f"Matched up {util.format_list([m.mention for m in group])}!")
-
         # Set up a thread for this match if the bot has permissions to do so
         if channel.permissions_for(channel.guild.me).create_public_threads:
             await channel.create_thread(
@@ -213,7 +196,6 @@ async def match_groups_in_channel(state: State, channel: discord.channel, min: i
 
     # Close off with a message
     await channel.send("That's all folks, happy matching and remember - DFTBA!")
-
     # Save the groups to the history
     state.log_groups(groups)
 
@@ -224,16 +206,13 @@ def get_matchees_in_channel(state: State, channel: discord.channel):
     """Fetches the matchees in a channel"""
     # Reactivate any unpaused users
     state.reactivate_users(channel.id)
-
     # Gather up the prospective matchees
     return [m for m in channel.members if state.get_user_active_in_channel(m.id, channel.id)]
 
 
 def active_members_to_groups(state: State, channel: discord.channel, min_members: int):
     """Helper to create groups from channel members"""
-
     # Gather up the prospective matchees
     matchees = get_matchees_in_channel(state, channel)
-
     # Create our groups!
     return members_to_groups(matchees, state, min_members, allow_fallback=True)

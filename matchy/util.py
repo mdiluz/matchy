@@ -37,3 +37,11 @@ def get_next_datetime(weekday, hour) -> datetime:
     next_date.replace(hour=hour)
 
     return next_date
+
+
+def iterate_all_shifts(list: list):
+    """Yields each shifted variation of the input list"""
+    yield list
+    for _ in range(len(list)-1):
+        list = list[1:] + [list[0]]
+        yield list

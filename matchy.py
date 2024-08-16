@@ -5,8 +5,8 @@ import logging
 import discord
 from discord.ext import commands
 import os
-from matchy.files.state import load_from_file
-import matchy.cogs.matchy
+from matchy.state import load_from_file
+import matchy.cogs.matcher
 import matchy.cogs.owner
 
 _STATE_FILE = ".matchy/state.json"
@@ -24,7 +24,7 @@ bot = commands.Bot(command_prefix='$',
 
 @bot.event
 async def setup_hook():
-    await bot.add_cog(matchy.cogs.matchy.MatchyCog(bot, state))
+    await bot.add_cog(matchy.cogs.matcher.MatcherCog(bot, state))
     await bot.add_cog(matchy.cogs.owner.OwnerCog(bot, state))
 
 

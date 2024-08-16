@@ -5,7 +5,7 @@ import discord
 import pytest
 import random
 import matchy.matching as matching
-import matchy.files.state as state
+import matchy.state as state
 import copy
 import itertools
 from datetime import datetime, timedelta
@@ -403,15 +403,5 @@ def test_auth_scopes():
     tmp_state.set_user_scope(id, state.AuthScope.MATCHER)
     assert tmp_state.get_user_has_scope(id, state.AuthScope.MATCHER)
 
-    tmp_state.validate()
-
-
-def test_iterate_all_shifts():
-    original = [1, 2, 3, 4]
-    lists = [val for val in matching.iterate_all_shifts(original)]
-    assert lists == [
-        [1, 2, 3, 4],
-        [2, 3, 4, 1],
-        [3, 4, 1, 2],
-        [4, 1, 2, 3],
-    ]
+    # Validate the state by constucting a new one
+    _ = state.State(tmp_state._dict)

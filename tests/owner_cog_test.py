@@ -2,7 +2,7 @@ import discord
 import discord.ext.commands as commands
 import pytest
 import pytest_asyncio
-import matchy.files.state as state
+import matchy.state as state
 import discord.ext.test as dpytest
 
 from matchy.cogs.owner import OwnerCog

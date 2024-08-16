@@ -3,7 +3,9 @@
 
 Matchy matches matchees.
 
-Matchy is a Discord bot that groups up users for fun and vibes. Matchy can be installed on your server by clicking [here](https://discord.com/oauth2/authorize?client_id=1270849346987884696&permissions=0&integration_type=0&scope=bot). Matchy only allows authorised users to trigger posts in channels.
+Matchy is a Discord bot that groups up users for fun and vibes. Matchy can be installed on your server [here](https://discord.com/oauth2/authorize?client_id=1270849346987884696&permissions=0&integration_type=0&scope=bot).
+
+Note: Matchy currently only allows owner-authorised users to trigger posts in channels.
 
 ![Tests](https://github.com/mdiluz/matchy/actions/workflows/test.yml/badge.svg)
 
@@ -46,26 +48,8 @@ Python tests are written to use `pytest` and cover most internal functionality. 
 
 ## Hosting
 
-### Config and State
-Matchy is configured by an optional `$MATCHY_CONFIG` envar or a `.matchy/config.json` file that takes this format:
-```json
-{
-    "version" : 2,
-    "match" : {
-        "score_factors": {
-            "repeat_role" : 4,
-            "repeat_match" : 8,
-            "extra_member" : 32,
-            "upper_threshold" : 64
-        }
-    }
-}
-```
-Only the version is required.
-
-See [`config.py`](matchy/files/config.py) for explanations for any extra settings here.
-
-_State_ is stored locally in a `.matchy/state.json` file. This will be created by the bot. This stores historical information on users, maching schedules, user auth scopes and more. See [`state.py`](matchy/files/state.py) for schema information if you need to inspect it.
+### State
+State is stored locally in a `.matchy/state.json` file. This will be created by the bot. This stores historical information on users, maching schedules, user auth scopes and more. See [`state.py`](matchy/files/state.py) for schema information if you need to inspect it.
 
 ### Secrets
 The `TOKEN` envar is required run the bot. It's recommended this is placed in a local `.env` file. To generate bot token for development see [this discord.py guide](https://discordpy.readthedocs.io/en/stable/discord.html).
