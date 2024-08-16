@@ -6,11 +6,13 @@ import discord
 from discord import app_commands
 from discord.ext import commands, tasks
 from datetime import datetime, timedelta, time
+import re
 
-import matchy.views.match as match
 import matchy.matching as matching
 from matchy.state import State, AuthScope
 import matchy.util as util
+import matchy.state as state
+
 
 logger = logging.getLogger("cog")
 logger.setLevel(logging.INFO)
@@ -25,7 +27,7 @@ class MatcherCog(commands.Cog):
     async def on_ready(self):
         """Bot is ready and connected"""
         self.run_hourly_tasks.start()
-        self.bot.add_dynamic_items(match.DynamicGroupButton)
+        self.bot.add_dynamic_items(DynamicGroupButton)
         activity = discord.Game("/join")
         await self.bot.change_presence(status=discord.Status.online, activity=activity)
         logger.info("Bot is up and ready!")
@@ -180,7 +182,7 @@ class MatcherCog(commands.Cog):
             # Otherwise set up the button
             msg += "\n\nClick the button to match up groups and send them to the channel.\n"
             view = discord.ui.View(timeout=None)
-            view.add_item(match.DynamicGroupButton(members_min))
+            view.add_item(DynamicGroupButton(members_min))
         else:
             # Let a non-matcher know why they don't have the button
             msg += f"\n\nYou'll need the {AuthScope.MATCHER}"
@@ -204,3 +206,45 @@ class MatcherCog(commands.Cog):
             msg_channel = self.bot.get_channel(int(channel))
             await msg_channel.send("Arf arf! just a reminder I'll be doin a matcherino in here in T-24hrs!"
                                    + "\nUse /join if you haven't already, or /pause if you want to skip a week :)")
+
+
+# Increment when adjusting the custom_id so we don't confuse old users
+_MATCH_BUTTON_CUSTOM_ID_VERSION = 1
+_MATCH_BUTTON_CUSTOM_ID_PREFIX = f'match:v{_MATCH_BUTTON_CUSTOM_ID_VERSION}:'
+
+
+class DynamicGroupButton(discord.ui.DynamicItem[discord.ui.Button],
+                         template=_MATCH_BUTTON_CUSTOM_ID_PREFIX + r'min:(?P<min>[0-9]+)'):
+    """
+    Describes a simple button that lets the user trigger a match
+    """
+
+    def __init__(self, min: int) -> None:
+        super().__init__(
+            discord.ui.Button(
+                label='Match Groups!',
+                style=discord.ButtonStyle.blurple,
+                custom_id=_MATCH_BUTTON_CUSTOM_ID_PREFIX + f'min:{min}',
+            )
+        )
+        self.min: int = min
+        self.state = state.load_from_file()
+
+    # This is called when the button is clicked and the custom_id matches the template.
+    @classmethod
+    async def from_custom_id(cls, intrctn: discord.Interaction, item: discord.ui.Button, match: re.Match[str], /):
+        min = int(match['min'])
+        return cls(min)
+
+    async def callback(self, intrctn: discord.Interaction) -> None:
+        """Match up people when the button is pressed"""
+
+        logger.info("Handling button press min=%s", self.min)
+        logger.info("User %s from %s in #%s", intrctn.user,
+                    intrctn.guild.name, intrctn.channel.name)
+
+        # Let the user know we've recieved the message
+        await intrctn.response.send_message(content="Matchy is matching matchees...", ephemeral=True)
+
+        # Perform the match
+        await matching.match_groups_in_channel(self.state, intrctn.channel, self.min)
