@@ -16,7 +16,7 @@ logger = logging.getLogger("cog")
 logger.setLevel(logging.INFO)
 
 
-class MatchyCog(commands.Cog):
+class MatcherCog(commands.Cog):
     def __init__(self, bot: commands.Bot, state: State):
         self.bot = bot
         self.state = state
