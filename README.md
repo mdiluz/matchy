@@ -46,26 +46,8 @@ Python tests are written to use `pytest` and cover most internal functionality. 
 
 ## Hosting
 
-### Config and State
-Matchy is configured by an optional `$MATCHY_CONFIG` envar or a `.matchy/config.json` file that takes this format:
-```json
-{
-    "version" : 2,
-    "match" : {
-        "score_factors": {
-            "repeat_role" : 4,
-            "repeat_match" : 8,
-            "extra_member" : 32,
-            "upper_threshold" : 64
-        }
-    }
-}
-```
-Only the version is required.
-
-See [`config.py`](matchy/files/config.py) for explanations for any extra settings here.
-
-_State_ is stored locally in a `.matchy/state.json` file. This will be created by the bot. This stores historical information on users, maching schedules, user auth scopes and more. See [`state.py`](matchy/files/state.py) for schema information if you need to inspect it.
+### State
+State is stored locally in a `.matchy/state.json` file. This will be created by the bot. This stores historical information on users, maching schedules, user auth scopes and more. See [`state.py`](matchy/files/state.py) for schema information if you need to inspect it.
 
 ### Secrets
 The `TOKEN` envar is required run the bot. It's recommended this is placed in a local `.env` file. To generate bot token for development see [this discord.py guide](https://discordpy.readthedocs.io/en/stable/discord.html).
