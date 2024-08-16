@@ -5,7 +5,7 @@ import pytest_asyncio
 import matchy.files.state as state
 import discord.ext.test as dpytest
 
-from matchy.cogs.owner import Cog
+from matchy.cogs.owner import OwnerCog
 
 # Primarily borrowing from https://dpytest.readthedocs.io/en/latest/tutorials/using_pytest.html
 # TODO: Test more somehow, though it seems like dpytest is pretty incomplete
@@ -20,7 +20,7 @@ async def bot():
     b = commands.Bot(command_prefix="$",
                      intents=intents)
     await b._async_setup_hook()
-    await b.add_cog(Cog(b, state.State(state._EMPTY_DICT)))
+    await b.add_cog(OwnerCog(b, state.State(state._EMPTY_DICT)))
     dpytest.configure(b)
     yield b
     await dpytest.empty_queue()

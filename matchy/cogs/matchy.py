@@ -8,15 +8,15 @@ from discord.ext import commands, tasks
 from datetime import datetime, timedelta, time
 
 import matchy.views.match as match
-import matching
+import matchy.matching as matching
 from matchy.files.state import State, AuthScope
-import util
+import matchy.util as util
 
 logger = logging.getLogger("cog")
 logger.setLevel(logging.INFO)
 
 
-class Cog(commands.Cog):
+class MatchyCog(commands.Cog):
     def __init__(self, bot: commands.Bot, state: State):
         self.bot = bot
         self.state = state
