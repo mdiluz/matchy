@@ -5,7 +5,7 @@ import logging
 import discord
 import re
 
-import matchy.files.state as state
+import matchy.state as state
 import matchy.matching as matching
 
 logger = logging.getLogger("match_button")

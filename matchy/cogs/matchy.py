@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, time
 
 import matchy.views.match as match
 import matchy.matching as matching
-from matchy.files.state import State, AuthScope
+from matchy.state import State, AuthScope
 import matchy.util as util
 
 logger = logging.getLogger("cog")

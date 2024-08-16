@@ -3,7 +3,7 @@ import logging
 import discord
 from datetime import datetime
 from typing import Protocol, runtime_checkable
-from matchy.files.state import State, ts_to_datetime
+from matchy.state import State, ts_to_datetime
 import matchy.util as util
 
 

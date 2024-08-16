@@ -5,7 +5,7 @@ import discord
 import pytest
 import random
 import matchy.matching as matching
-import matchy.files.state as state
+import matchy.state as state
 import copy
 import itertools
 from datetime import datetime, timedelta

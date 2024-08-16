@@ -5,7 +5,7 @@ import logging
 import discord
 from discord.ext import commands
 import os
-from matchy.files.state import load_from_file
+from matchy.state import load_from_file
 import matchy.cogs.matchy
 import matchy.cogs.owner
 

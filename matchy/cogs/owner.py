@@ -3,7 +3,7 @@ Owner bot cog
 """
 import logging
 from discord.ext import commands
-from matchy.files.state import State, AuthScope
+from matchy.state import State, AuthScope
 
 logger = logging.getLogger("owner")
 logger.setLevel(logging.INFO)
