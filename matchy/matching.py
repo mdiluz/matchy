@@ -65,12 +65,6 @@ class Guild(Protocol):
         pass
 
 
-def members_to_groups_simple(matchees: list[Member], per_group: int) -> tuple[bool, list[list[Member]]]:
-    """Super simple group matching, literally no logic"""
-    num_groups = max(len(matchees)//per_group, 1)
-    return [matchees[i::num_groups] for i in range(num_groups)]
-
-
 def get_member_group_eligibility_score(member: Member,
                                        group: list[Member],
                                        prior_matches: list[int],
@@ -148,14 +142,6 @@ def attempt_create_groups(matchees: list[Member],
     return groups
 
 
-def iterate_all_shifts(list: list):
-    """Yields each shifted variation of the input list"""
-    yield list
-    for _ in range(len(list)-1):
-        list = list[1:] + [list[0]]
-        yield list
-
-
 def members_to_groups(matchees: list[Member],
                       state: State,
                       per_group: int = 3,
@@ -172,7 +158,7 @@ def members_to_groups(matchees: list[Member],
     for oldest_relevant_datetime in state.get_history_timestamps(matchees) + [datetime.now()]:
 
         # Attempt with each starting matchee
-        for shifted_matchees in iterate_all_shifts(matchees):
+        for shifted_matchees in util.iterate_all_shifts(matchees):
 
             attempts += 1
             groups = attempt_create_groups(
@@ -186,7 +172,7 @@ def members_to_groups(matchees: list[Member],
     # If we've still failed, just use the simple method
     if allow_fallback:
         logger.info("Fell back to simple groups after %s attempt(s)", attempts)
-        return members_to_groups_simple(matchees, per_group)
+        return [matchees[i::num_groups] for i in range(num_groups)]
 
     # Simply assert false, this should never happen
     # And should be caught by tests
@@ -199,10 +185,8 @@ async def match_groups_in_channel(state: State, channel: discord.channel, min: i
 
     # Send the groups
     for group in groups:
-
         message = await channel.send(
             f"Matched up {util.format_list([m.mention for m in group])}!")
-
         # Set up a thread for this match if the bot has permissions to do so
         if channel.permissions_for(channel.guild.me).create_public_threads:
             await channel.create_thread(
@@ -212,7 +196,6 @@ async def match_groups_in_channel(state: State, channel: discord.channel, min: i
 
     # Close off with a message
     await channel.send("That's all folks, happy matching and remember - DFTBA!")
-
     # Save the groups to the history
     state.log_groups(groups)
 
@@ -223,16 +206,13 @@ def get_matchees_in_channel(state: State, channel: discord.channel):
     """Fetches the matchees in a channel"""
     # Reactivate any unpaused users
     state.reactivate_users(channel.id)
-
     # Gather up the prospective matchees
     return [m for m in channel.members if state.get_user_active_in_channel(m.id, channel.id)]
 
 
 def active_members_to_groups(state: State, channel: discord.channel, min_members: int):
     """Helper to create groups from channel members"""
-
     # Gather up the prospective matchees
     matchees = get_matchees_in_channel(state, channel)
-
     # Create our groups!
     return members_to_groups(matchees, state, min_members, allow_fallback=True)

@@ -405,14 +405,3 @@ def test_auth_scopes():
 
     # Validate the state by constucting a new one
     _ = state.State(tmp_state._dict)
-
-
-def test_iterate_all_shifts():
-    original = [1, 2, 3, 4]
-    lists = [val for val in matching.iterate_all_shifts(original)]
-    assert lists == [
-        [1, 2, 3, 4],
-        [2, 3, 4, 1],
-        [3, 4, 1, 2],
-        [4, 1, 2, 3],
-    ]
