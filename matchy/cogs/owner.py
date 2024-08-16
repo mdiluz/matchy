@@ -9,7 +9,7 @@ logger = logging.getLogger("owner")
 logger.setLevel(logging.INFO)
 
 
-class Cog(commands.Cog):
+class OwnerCog(commands.Cog):
     def __init__(self, bot: commands.Bot, state: State):
         self._bot = bot
         self._state = state

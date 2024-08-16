@@ -24,8 +24,8 @@ bot = commands.Bot(command_prefix='$',
 
 @bot.event
 async def setup_hook():
-    await bot.add_cog(matchy.cogs.matchy.Cog(bot, state))
-    await bot.add_cog(matchy.cogs.owner.Cog(bot, state))
+    await bot.add_cog(matchy.cogs.matchy.MatchyCog(bot, state))
+    await bot.add_cog(matchy.cogs.owner.OwnerCog(bot, state))
 
 
 @bot.event
