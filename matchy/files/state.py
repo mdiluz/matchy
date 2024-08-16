@@ -4,7 +4,9 @@ from datetime import datetime
 from schema import Schema, Use, Optional
 from collections.abc import Generator
 from typing import Protocol
-import matchy.files.ops as ops
+import json
+import shutil
+import pathlib
 import copy
 import logging
 from functools import wraps
@@ -169,6 +171,27 @@ def datetime_to_ts(ts: datetime) -> str:
     return datetime.strftime(ts, _TIME_FORMAT)
 
 
+def _load(file: str) -> dict:
+    """Load a json file directly as a dict"""
+    with open(file) as f:
+        return json.load(f)
+
+
+def _save(file: str, content: dict):
+    """
+    Save out a content dictionary to a file
+    """
+    # Ensure the save directory exists first
+    dir = pathlib.Path(os.path.dirname(file))
+    dir.mkdir(parents=True, exist_ok=True)
+
+    # Store in an intermediary directory first
+    intermediate = file + ".nxt"
+    with open(intermediate, "w") as f:
+        json.dump(content, f, indent=4)
+    shutil.move(intermediate, file)
+
+
 class State():
     def __init__(self, data: dict, file: str | None = None):
         """Copy the data, migrate if needed, and validate"""
@@ -196,7 +219,7 @@ class State():
             func(tmp, *args, **kwargs)
             _SCHEMA.validate(tmp._dict)
             if tmp._file:
-                ops.save(tmp._file, tmp._dict)
+                _save(tmp._file, tmp._dict)
             self._dict = tmp._dict
 
         return inner
@@ -367,7 +390,7 @@ def load_from_file(file: str) -> State:
     """
     Load the state from a files
     """
-    loaded = ops.load(file) if os.path.isfile(file) else _EMPTY_DICT
+    loaded = _load(file) if os.path.isfile(file) else _EMPTY_DICT
     st = State(loaded, file)
-    ops.save(file, st._dict)
+    _save(file, st._dict)
     return st
