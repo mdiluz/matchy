@@ -18,8 +18,9 @@ Matchy supports a bunch of user, `matcher` and bot owner commands. `/` commands 
 | /leave    | user        | Leaves the matchee list                                |
 | /pause    | user        | Pauses the user for `days: int` days                   |
 | /list     | user        | Lists the current matchees and scheduled matches       |
-| /match    | user        | Shares a preview of the matchee groups of size `group_min: int` with the user, offers a button to post the match to `matcher` users                 |
-| /schedule | `matcher`   | Shedules a match every week with `group_min: int` users on `weekday: int` day and at `hour: int` hour. Can pass `cancel: True` to stop the schedule |
+| /match    | user*       | Shares a preview of the matchee groups of size `group_min: int` with the user. *Offers a button to post the match to `matcher` users                 |
+| /schedule | `matcher`   | Schedules a match every week with `group_min: int` users on `weekday: int` day and at `hour: int` hour. Can pass `cancel: True` to stop the schedule |
+| /cancel   | `matcher`   | Cancels any scheduled matches in this channel          |
 | $sync     | bot owner   | Syncs bot command data with the discord servers        |
 | $close    | bot owner   | Closes the bot connection so the bot quits safely      |
 | $grant    | bot owner   | Grants matcher to a given user (ID)                    |

@@ -338,7 +338,7 @@ class State():
                 yield (task[_Key.WEEKDAY], task[_Key.HOUR], task[_Key.MEMBERS_MIN])
 
     @safe_write
-    def set_channel_match_task(self, channel_id: str, members_min: int, weekday: int, hour: int, set: bool) -> bool:
+    def set_channel_match_task(self, channel_id: str, members_min: int, weekday: int, hour: int):
         """Set up a match task on a channel"""
         channel = self._tasks.setdefault(str(channel_id), {})
         matches = channel.setdefault(_Key.MATCH_TASKS, [])
@@ -348,26 +348,24 @@ class State():
             # Specifically check for the combination of weekday and hour
             if match[_Key.WEEKDAY] == weekday and match[_Key.HOUR] == hour:
                 found = True
-                if set:
-                    match[_Key.MEMBERS_MIN] = members_min
-                else:
-                    matches.remove(match)
-
+                match[_Key.MEMBERS_MIN] = members_min
                 # Return true as we've successfully changed the data in place
                 return True
 
         # If we didn't find it, add it to the schedule
-        if not found and set:
+        if not found:
             matches.append({
                 _Key.MEMBERS_MIN: members_min,
                 _Key.WEEKDAY: weekday,
                 _Key.HOUR: hour,
             })
 
-            return True
-
-        # We did not manage to remove the schedule (or add it? though that should be impossible)
-        return False
+    @safe_write
+    def remove_channel_match_tasks(self, channel_id: str):
+        """Simply delete the match tasks list"""
+        channel = self._tasks.setdefault(str(channel_id), {})
+        if _Key.MATCH_TASKS in channel:
+            del channel[_Key.MATCH_TASKS]
 
     @property
     def _users(self) -> dict[str]:
