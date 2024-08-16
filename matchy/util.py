@@ -27,7 +27,7 @@ def get_next_datetime(weekday, hour) -> datetime:
 
     # Calculate the next datetime
     next_date = now + timedelta(days=days_until_next_week)
-    next_date.replace(hour=hour)
+    next_date = next_date.replace(hour=hour, minute=0, second=0, microsecond=0)
 
     return next_date
 
