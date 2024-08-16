@@ -70,7 +70,7 @@ class MatcherCog(commands.Cog):
             interaction.user.id, interaction.channel.id, until)
         await interaction.response.send_message(
             f"Sure thing {interaction.user.mention}!\n"
-            + f"Paused you until {util.format_day(until)}!",
+            + f"Paused you until {util.datetime_as_discord_time(until)}!",
             ephemeral=True, silent=True)
 
     @app_commands.command(description="List the matchees for this channel")
@@ -88,8 +88,8 @@ class MatcherCog(commands.Cog):
         tasks = self.state.get_channel_match_tasks(interaction.channel.id)
         for (day, hour, min) in tasks:
             next_run = util.get_next_datetime(day, hour)
-            date_str = util.format_day(next_run)
-            msg += f"\nNext scheduled for {date_str} at {hour:02d}:00"
+            date_str = util.datetime_as_discord_time(next_run)
+            msg += f"\nNext scheduled for {date_str}"
             msg += f" with {min} members per group"
 
         await interaction.response.send_message(msg, ephemeral=True, silent=True)
@@ -132,10 +132,10 @@ class MatcherCog(commands.Cog):
             logger.info("Scheduled new match task in %s with min %s weekday %s hour %s",
                         channel_id, members_min, weekday, hour)
             next_run = util.get_next_datetime(weekday, hour)
-            date_str = util.format_day(next_run)
+            date_str = util.datetime_as_discord_time(next_run)
 
             await interaction.response.send_message(
-                f"Done :) Next run will be on {date_str} at {hour:02d}:00\n"
+                f"Done :) Next run will be on {date_str}\n"
                 + "Cancel this by re-sending the command with cancel=True",
                 ephemeral=True, silent=True)
 

@@ -9,13 +9,6 @@ def get_day_with_suffix(day):
         return str(day) + {1: 'st', 2: 'nd', 3: 'rd'}.get(day % 10, 'th')
 
 
-def format_day(time: datetime) -> str:
-    """Format the a given datetime"""
-    num = get_day_with_suffix(time.day)
-    day = time.strftime("%a")
-    return f"{day} {num}"
-
-
 def format_list(list: list) -> str:
     """Format a list into a human readable format of foo, bar and bob"""
     if len(list) > 1:
@@ -37,6 +30,10 @@ def get_next_datetime(weekday, hour) -> datetime:
     next_date.replace(hour=hour)
 
     return next_date
+
+
+def datetime_as_discord_time(time: datetime) -> str:
+    return f"<t:{int(time.timestamp())}>"
 
 
 def iterate_all_shifts(list: list):
