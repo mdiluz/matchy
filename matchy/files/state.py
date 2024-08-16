@@ -191,7 +191,7 @@ class State():
         before storing the dict back in the State
         """
         @wraps(func)
-        def inner(self: State, *args, **kwargs):
+        def inner(self, *args, **kwargs):
             tmp = State(self._dict, self._file)
             func(tmp, *args, **kwargs)
             _SCHEMA.validate(tmp._dict)

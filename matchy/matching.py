@@ -5,7 +5,6 @@ from datetime import datetime
 from typing import Protocol, runtime_checkable
 from matchy.files.state import State, ts_to_datetime
 import matchy.util as util
-import matchy.files.config as config
 
 
 class _ScoreFactors(int):
@@ -15,14 +14,14 @@ class _ScoreFactors(int):
     """
 
     # Added for each role the matchee has that another group member has
-    REPEAT_ROLE = config.Config.score_factors.repeat_role or 2**2
+    REPEAT_ROLE = 2**2
     # Added for each member in the group that the matchee has already matched with
-    REPEAT_MATCH = config.Config.score_factors.repeat_match or 2**3
+    REPEAT_MATCH = 2**3
     # Added for each additional member over the set "per group" value
-    EXTRA_MEMBER = config.Config.score_factors.extra_member or 2**5
+    EXTRA_MEMBER = 2**5
 
     # Upper threshold, if the user scores higher than this they will not be placed in that group
-    UPPER_THRESHOLD = config.Config.score_factors.upper_threshold or 2**6
+    UPPER_THRESHOLD = 2**6
 
 
 logger = logging.getLogger("matching")

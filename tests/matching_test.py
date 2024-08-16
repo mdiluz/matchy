@@ -403,7 +403,8 @@ def test_auth_scopes():
     tmp_state.set_user_scope(id, state.AuthScope.MATCHER)
     assert tmp_state.get_user_has_scope(id, state.AuthScope.MATCHER)
 
-    tmp_state.validate()
+    # Validate the state by constucting a new one
+    _ = state.State(tmp_state._dict)
 
 
 def test_iterate_all_shifts():
