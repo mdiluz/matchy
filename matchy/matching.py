@@ -193,6 +193,6 @@ def get_matchees_in_channel(channel: discord.channel):
 def active_members_to_groups(channel: discord.channel, min_members: int):
     """Helper to create groups from channel members"""
     # Gather up the prospective matchees
-    matchees = get_matchees_in_channel(channel)
+    (matchees, _) = get_matchees_in_channel(channel)
     # Create our groups!
     return members_to_groups(matchees, min_members, allow_fallback=True)

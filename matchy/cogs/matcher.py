@@ -261,7 +261,7 @@ class MatchDynamicButton(discord.ui.DynamicItem[discord.ui.Button],
 
 async def match_groups_in_channel(channel: discord.channel, min: int):
     """Match up the groups in a given channel"""
-    groups = matching.active_members_to_groups(state, channel, min)
+    groups = matching.active_members_to_groups(channel, min)
 
     # Send the groups
     for group in groups:
