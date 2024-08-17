@@ -178,3 +178,18 @@ def matched_up(ms): return [
 def thread_title(ms): return [
     f"{format_list(ms)}",
 ]
+
+
+@randomised
+def added_schedule(m): return [
+    f"{m} added a match to this channel!"
+    f"A matchy run was scheduled by {m}."
+    f"{m} scheduled a match in here :)"
+]
+
+
+@randomised
+def scheduled_matches(): return [
+    "Current scheduled matches are:"
+    "I've got these scheduled matches right now:"
+]

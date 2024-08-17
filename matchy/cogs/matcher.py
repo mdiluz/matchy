@@ -300,16 +300,16 @@ class ScheduleButton(discord.ui.Button):
 
         tasks = state.State.get_channel_match_tasks(interaction.channel.id)
 
-        msg = f"{interaction.user.mention} added a match to this channel!\n"
-        msg += "Current scheduled matches are:"
+        msg = strings.added_schedule(interaction.user.mention) + "\n"
+        msg += strings.scheduled_matches()
 
         if tasks:
             for (day, hour, min) in tasks:
                 next_run = util.get_next_datetime(day, hour)
-                date_str = util.datetime_as_discord_time(next_run)
-                msg += f"\n{date_str} with {min} members per group\n"
+                msg += strings.scheduled(next_run, min)
 
             await interaction.channel.send(msg)
-            await interaction.response.send_message(content="Posted :)", ephemeral=True)
+            await interaction.response.send_message(
+                content=strings.acknowledgement(interaction.user.mention), ephemeral=True)
         else:
-            await interaction.response.send_message(content="No scheduled matches to post :(", ephemeral=True)
+            await interaction.response.send_message(content=strings.no_scheduled(), ephemeral=True)
