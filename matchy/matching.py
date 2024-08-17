@@ -207,7 +207,9 @@ def get_matchees_in_channel(state: State, channel: discord.channel):
     # Reactivate any unpaused users
     state.reactivate_users(channel.id)
     # Gather up the prospective matchees
-    return [m for m in channel.members if state.get_user_active_in_channel(m.id, channel.id)]
+    active = [m for m in channel.members if state.get_user_active_in_channel(m.id, channel.id)]
+    paused = [m for m in channel.members if state.get_user_paused_in_channel(m.id, channel.id)]
+    return (active, paused)
 
 
 def active_members_to_groups(state: State, channel: discord.channel, min_members: int):

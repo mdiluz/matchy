@@ -10,3 +10,31 @@ def test_iterate_all_shifts():
         [3, 4, 1, 2],
         [4, 1, 2, 3],
     ]
+
+
+def test_get_nested_dict_value():
+    d = {
+        "x": {
+            "y": {
+                "z": {
+                    "val": 42
+                }
+            }
+        }
+    }
+    assert 42 == util.get_nested_value(d, "x", "y", "z", "val")
+    assert 16 == util.get_nested_value(d, "x", "y", "z", "vol", default=16)
+
+
+def test_set_nested_dict_value():
+    d = {
+        "x": {
+            "y": {
+                "z": {
+                    "val": 42
+                }
+            }
+        }
+    }
+    util.set_nested_value(d, "x", "y", "z", "val", value=52)
+    assert 52 == util.get_nested_value(d, "x", "y", "z", "val")
