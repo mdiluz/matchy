@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from functools import reduce
 
 
 def get_day_with_suffix(day):
@@ -42,3 +43,19 @@ def iterate_all_shifts(list: list):
     for _ in range(len(list)-1):
         list = list[1:] + [list[0]]
         yield list
+
+
+def get_nested_value(d, *keys, default=None):
+    """Helper method for walking down an optional set of nested dicts to get a value"""
+    return reduce(lambda d, key: d.get(key, {}), keys, d) or default
+
+
+def set_nested_value(d, *keys, value=None):
+    """Helper method for walking down an optional set of nested dicts to set a value"""
+    for key in keys[:-1]:
+        d = d.setdefault(key, {})
+    leaf = keys[-1]
+    if value is not None:
+        d[leaf] = value
+    elif leaf in d:
+        del d[leaf]

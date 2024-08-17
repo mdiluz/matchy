@@ -79,18 +79,30 @@ class MatcherCog(commands.Cog):
         logger.info("Handling /list command in %s %s from %s",
                     interaction.guild.name, interaction.channel, interaction.user.name)
 
-        matchees = matching.get_matchees_in_channel(
+        (matchees, paused) = matching.get_matchees_in_channel(
             self.state, interaction.channel)
-        mentions = [m.mention for m in matchees]
-        msg = "Current matchees in this channel:\n" + \
-            f"{util.format_list(mentions)}"
+
+        msg = ""
+
+        if matchees:
+            mentions = [m.mention for m in matchees]
+            msg += f"There are {len(matchees)} active matchees:\n"
+            msg += f"{util.format_list(mentions)}\n"
+
+        if paused:
+            mentions = [m.mention for m in paused]
+            msg += f"\nThere are {len(mentions)} paused matchees:\n"
+            msg += f"{util.format_list([m.mention for m in paused])}\n"
 
         tasks = self.state.get_channel_match_tasks(interaction.channel.id)
         for (day, hour, min) in tasks:
             next_run = util.get_next_datetime(day, hour)
             date_str = util.datetime_as_discord_time(next_run)
-            msg += f"\nNext scheduled at {date_str}"
-            msg += f" with {min} members per group"
+            msg += f"\nA match is scheduled at {date_str}"
+            msg += f" with {min} members per group\n"
+
+        if not msg:
+            msg = "There are no matchees in this channel and no scheduled matches :("
 
         await interaction.response.send_message(msg, ephemeral=True, silent=True)
 

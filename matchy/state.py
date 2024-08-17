@@ -10,6 +10,7 @@ import pathlib
 import copy
 import logging
 from functools import wraps
+import matchy.util as util
 
 logger = logging.getLogger("state")
 logger.setLevel(logging.INFO)
@@ -275,39 +276,42 @@ class State():
             Check if a user has an auth scope
             "owner" users have all scopes
         """
-        user = self._users.get(str(id), {})
-        scopes = user.get(_Key.SCOPES, [])
+        scopes = util.get_nested_value(
+            self._users, str(id), _Key.SCOPES, default=[])
         return scope in scopes
 
+    @safe_write
     def set_user_active_in_channel(self, id: str, channel_id: str, active: bool = True):
         """Set a user as active (or not) on a given channel"""
-        self._set_user_channel_prop(id, channel_id, _Key.ACTIVE, active)
+        util.set_nested_value(
+            self._users, str(id), _Key.CHANNELS, str(channel_id), _Key.ACTIVE, value=active)
+        util.set_nested_value(
+            self._users, str(id), _Key.CHANNELS, str(channel_id), _Key.REACTIVATE, value=None)
 
     def get_user_active_in_channel(self, id: str, channel_id: str) -> bool:
-        """Get a users active channels"""
-        user = self._users.get(str(id), {})
-        channels = user.get(_Key.CHANNELS, {})
-        return str(channel_id) in [channel for (channel, props) in channels.items() if props.get(_Key.ACTIVE, False)]
+        """Get a if a user is active in a channel"""
+        return util.get_nested_value(self._users, str(id), _Key.CHANNELS, str(channel_id), _Key.ACTIVE)
 
+    def get_user_paused_in_channel(self, id: str, channel_id: str) -> str:
+        """Get a the user reactivate time if it exists"""
+        return util.get_nested_value(self._users, str(id), _Key.CHANNELS, str(channel_id), _Key.REACTIVATE)
+
+    @safe_write
     def set_user_paused_in_channel(self, id: str, channel_id: str, until: datetime):
-        """Sets a user as paused in a channel"""
-        # Deactivate the user in the channel first
-        self.set_user_active_in_channel(id, channel_id, False)
-
-        self._set_user_channel_prop(
-            id, channel_id, _Key.REACTIVATE, datetime_to_ts(until))
+        """Sets a user as inactive in a channel with a reactivation time"""
+        util.set_nested_value(
+            self._users, str(id), _Key.CHANNELS, str(channel_id), _Key.ACTIVE, value=False)
+        util.set_nested_value(
+            self._users, str(id), _Key.CHANNELS, str(channel_id), _Key.REACTIVATE, value=datetime_to_ts(until))
 
     @safe_write
     def reactivate_users(self, channel_id: str):
         """Reactivate any users who've passed their reactivation time on this channel"""
-        for user in self._users.values():
-            channels = user.get(_Key.CHANNELS, {})
-            channel = channels.get(str(channel_id), {})
-            if channel and not channel[_Key.ACTIVE]:
-                reactivate = channel.get(_Key.REACTIVATE, None)
-                # Check if we've gone past the reactivation time and re-activate
-                if reactivate and datetime.now() > ts_to_datetime(reactivate):
-                    channel[_Key.ACTIVE] = True
+        for user in self._users:
+            reactivate = self.get_user_paused_in_channel(
+                str(user), str(channel_id))
+            if reactivate and datetime.now() > ts_to_datetime(reactivate):
+                self.set_user_active_in_channel(str(user), str(channel_id))
 
     def get_active_match_tasks(self, time: datetime | None = None) -> Generator[str, int]:
         """
@@ -374,14 +378,6 @@ class State():
     @property
     def _tasks(self) -> dict[str]:
         return self._dict[_Key.TASKS]
-
-    @safe_write
-    def _set_user_channel_prop(self, id: str, channel_id: str, key: str, value):
-        """Set a user channel property helper"""
-        user = self._users.setdefault(str(id), {})
-        channels = user.setdefault(_Key.CHANNELS, {})
-        channel = channels.setdefault(str(channel_id), {})
-        channel[key] = value
 
 
 def load_from_file(file: str) -> State:
