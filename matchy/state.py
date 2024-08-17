@@ -15,7 +15,6 @@ import matchy.util as util
 logger = logging.getLogger("state")
 logger.setLevel(logging.INFO)
 
-
 # Warning: Changing any of the below needs proper thought to ensure backwards compatibility
 _VERSION = 4
 
@@ -193,7 +192,7 @@ def _save(file: str, content: dict):
     shutil.move(intermediate, file)
 
 
-class State():
+class _State():
     def __init__(self, data: dict, file: str | None = None):
         """Copy the data, migrate if needed, and validate"""
         self._dict = copy.deepcopy(data)
@@ -216,7 +215,7 @@ class State():
         """
         @wraps(func)
         def inner(self, *args, **kwargs):
-            tmp = State(self._dict, self._file)
+            tmp = _State(self._dict, self._file)
             func(tmp, *args, **kwargs)
             _SCHEMA.validate(tmp._dict)
             if tmp._file:
@@ -380,11 +379,15 @@ class State():
         return self._dict[_Key.TASKS]
 
 
-def load_from_file(file: str) -> State:
+def load_from_file(file: str) -> _State:
     """
     Load the state from a files
     """
     loaded = _load(file) if os.path.isfile(file) else _EMPTY_DICT
-    st = State(loaded, file)
+    st = _State(loaded, file)
     _save(file, st._dict)
     return st
+
+
+_STATE_FILE = ".matchy/state.json"
+State = load_from_file(_STATE_FILE)
