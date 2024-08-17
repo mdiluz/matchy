@@ -26,7 +26,7 @@ class MatcherCog(commands.Cog):
     async def on_ready(self):
         """Bot is ready and connected"""
         self.run_hourly_tasks.start()
-        self.bot.add_dynamic_items(DynamicGroupButton)
+        self.bot.add_dynamic_items(MatchDynamicButton)
         activity = discord.Game("/join")
         await self.bot.change_presence(status=discord.Status.online, activity=activity)
         logger.info("Bot is up and ready!")
@@ -199,7 +199,7 @@ class MatcherCog(commands.Cog):
             # Otherwise set up the button
             msg += "\n\nClick the button to match up groups and send them to the channel.\n"
             view = discord.ui.View(timeout=None)
-            view.add_item(DynamicGroupButton(members_min))
+            view.add_item(MatchDynamicButton(members_min))
         else:
             # Let a non-matcher know why they don't have the button
             msg += f"\n\nYou'll need the {AuthScope.MATCHER}"
@@ -230,7 +230,7 @@ _MATCH_BUTTON_CUSTOM_ID_VERSION = 1
 _MATCH_BUTTON_CUSTOM_ID_PREFIX = f'match:v{_MATCH_BUTTON_CUSTOM_ID_VERSION}:'
 
 
-class DynamicGroupButton(discord.ui.DynamicItem[discord.ui.Button],
+class MatchDynamicButton(discord.ui.DynamicItem[discord.ui.Button],
                          template=_MATCH_BUTTON_CUSTOM_ID_PREFIX + r'min:(?P<min>[0-9]+)'):
     """
     Describes a simple button that lets the user trigger a match
@@ -263,4 +263,37 @@ class DynamicGroupButton(discord.ui.DynamicItem[discord.ui.Button],
         await intrctn.response.send_message(content="Matchy is matching matchees...", ephemeral=True)
 
         # Perform the match
-        await matching.match_groups_in_channel(self.state, intrctn.channel, self.min)
+        await matching.match_groups_in_channel(intrctn.channel, self.min)
+
+
+class ScheduleButton(discord.ui.Button):
+    """
+    Describes a simple button that lets the user post the schedule to the channel
+    """
+
+    def __init__(self) -> None:
+        super().__init__(
+            label='Post schedule',
+            style=discord.ButtonStyle.blurple
+        )
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        """Post about the current schedule when requested"""
+        logger.info("Handling schedule button press byuser %s from %s in #%s",
+                    interaction.user, interaction.guild.name, interaction.channel.name)
+
+        tasks = state.State.get_channel_match_tasks(interaction.channel.id)
+
+        interaction.channel.send(
+            f"User {interaction.user.mention} added a match to this channel!\n\n"
+            + "Current scheduled matches are:")
+
+        if tasks:
+            for (day, hour, min) in tasks:
+                next_run = util.get_next_datetime(day, hour)
+                date_str = util.datetime_as_discord_time(next_run)
+                msg = f"{date_str} with {min} members per group\n"
+
+            interaction.channel.send(msg)
+        else:
+            await interaction.response.send_message(content="No scheduled matches to post :(", ephemeral=True)
