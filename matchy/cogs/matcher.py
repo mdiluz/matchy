@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, time
 import re
 
 import matchy.matching as matching
-from matchy.state import State, AuthScope
+from matchy.state import AuthScope
 import matchy.util as util
 import matchy.state as state
 import matchy.cogs.strings as strings
