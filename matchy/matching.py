@@ -179,29 +179,6 @@ def members_to_groups(matchees: list[Member],
     assert False
 
 
-async def match_groups_in_channel(state: State, channel: discord.channel, min: int):
-    """Match up the groups in a given channel"""
-    groups = active_members_to_groups(state, channel, min)
-
-    # Send the groups
-    for group in groups:
-        message = await channel.send(
-            f"Matched up {util.format_list([m.mention for m in group])}!")
-        # Set up a thread for this match if the bot has permissions to do so
-        if channel.permissions_for(channel.guild.me).create_public_threads:
-            await channel.create_thread(
-                name=util.format_list([m.display_name for m in group]),
-                message=message,
-                reason="Creating a matching thread")
-
-    # Close off with a message
-    await channel.send("That's all folks, happy matching and remember - DFTBA!")
-    # Save the groups to the history
-    state.log_groups(groups)
-
-    logger.info("Done! Matched into %s groups.", len(groups))
-
-
 def get_matchees_in_channel(state: State, channel: discord.channel):
     """Fetches the matchees in a channel"""
     # Reactivate any unpaused users

@@ -38,3 +38,15 @@ def test_set_nested_dict_value():
     }
     util.set_nested_value(d, "x", "y", "z", "val", value=52)
     assert 52 == util.get_nested_value(d, "x", "y", "z", "val")
+
+
+def test_randomized():
+
+    def string():
+        return "foo"
+
+    def list():
+        return ["foo", "bar"]
+
+    assert util.randomised(string)() == "foo"
+    assert util.randomised(list)() in list()
