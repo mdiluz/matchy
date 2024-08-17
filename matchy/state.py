@@ -308,6 +308,7 @@ class State():
                 # Check if we've gone past the reactivation time and re-activate
                 if reactivate and datetime.now() > ts_to_datetime(reactivate):
                     channel[_Key.ACTIVE] = True
+                    del channel[_Key.REACTIVATE]
 
     def get_active_match_tasks(self, time: datetime | None = None) -> Generator[str, int]:
         """
