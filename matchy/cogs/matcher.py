@@ -96,7 +96,7 @@ class MatcherCog(commands.Cog):
         tasks = self.state.get_channel_match_tasks(interaction.channel.id)
         for (day, hour, min) in tasks:
             next_run = util.get_next_datetime(day, hour)
-            msg += "\n" + strings.scheduled(next_run, min) + "\n"
+            msg += "\n" + strings.scheduled(next_run, min)
 
         if not msg:
             msg = strings.no_scheduled()
@@ -266,11 +266,11 @@ async def match_groups_in_channel(state: State, channel: discord.channel, min: i
     # Send the groups
     for group in groups:
         message = await channel.send(
-            f"Matched up {util.format_list([m.mention for m in group])}!")
+            strings.matched_up([m.mention for m in group]))
         # Set up a thread for this match if the bot has permissions to do so
         if channel.permissions_for(channel.guild.me).create_public_threads:
             await channel.create_thread(
-                name=util.format_list([m.display_name for m in group]),
+                name=strings.thread_title([m.display_name for m in group]),
                 message=message,
                 reason="Creating a matching thread")
 
