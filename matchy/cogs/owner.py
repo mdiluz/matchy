@@ -51,4 +51,4 @@ class OwnerCog(commands.Cog):
             logger.info("Granting user %s matcher scope", user)
             await ctx.reply("Done!", ephemeral=True)
         else:
-            await ctx.reply("Likely not a user...", ephemeral=True)
+            await ctx.reply(f"{user} is not a user?", ephemeral=True)

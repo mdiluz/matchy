@@ -7,6 +7,5 @@
     ],
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true,
-    "autopep8.interpreter": [".venv/bin/python"],
     "python.envFile": "${workspaceFolder}/.env",
 }

@@ -12,6 +12,7 @@ import matchy.matching as matching
 from matchy.state import AuthScope
 import matchy.util as util
 import matchy.state as state
+import matchy.cogs.strings as strings
 
 
 logger = logging.getLogger("cog")
@@ -40,8 +41,8 @@ class MatcherCog(commands.Cog):
         state.State.set_user_active_in_channel(
             interaction.user.id, interaction.channel.id)
         await interaction.response.send_message(
-            f"Roger roger {interaction.user.mention}!\n"
-            + f"Added you to {interaction.channel.mention}!",
+            strings.acknowledgement(interaction.user.mention) + "\n"
+            + strings.user_added(interaction.channel.mention),
             ephemeral=True, silent=True)
 
     @app_commands.command(description="Leave the matchees for this channel")
@@ -53,7 +54,7 @@ class MatcherCog(commands.Cog):
         state.State.set_user_active_in_channel(
             interaction.user.id, interaction.channel.id, False)
         await interaction.response.send_message(
-            f"No worries {interaction.user.mention}. Come back soon :)", ephemeral=True, silent=True)
+            strings.user_leave(interaction.user.mention), ephemeral=True, silent=True)
 
     @app_commands.command(description="Pause your matching in this channel for a number of days")
     @commands.guild_only()
@@ -68,8 +69,8 @@ class MatcherCog(commands.Cog):
         state.State.set_user_paused_in_channel(
             interaction.user.id, interaction.channel.id, until)
         await interaction.response.send_message(
-            f"Sure thing {interaction.user.mention}!\n"
-            + f"Paused you until {util.datetime_as_discord_time(until)}!",
+            strings.acknowledgement(interaction.user.mention) + "\n"
+            + strings.paused(until),
             ephemeral=True, silent=True)
 
     @app_commands.command(description="List the matchees for this channel")
@@ -84,23 +85,19 @@ class MatcherCog(commands.Cog):
 
         if matchees:
             mentions = [m.mention for m in matchees]
-            msg += f"There are {len(matchees)} active matchees:\n"
-            msg += f"{util.format_list(mentions)}\n"
+            msg += strings.active_matchees(mentions) + "\n"
 
         if paused:
             mentions = [m.mention for m in paused]
-            msg += f"\nThere are {len(mentions)} paused matchees:\n"
-            msg += f"{util.format_list([m.mention for m in paused])}\n"
+            msg += "\n" + strings.paused_matchees(mentions) + "\n"
 
         tasks = state.State.get_channel_match_tasks(interaction.channel.id)
         for (day, hour, min) in tasks:
             next_run = util.get_next_datetime(day, hour)
-            date_str = util.datetime_as_discord_time(next_run)
-            msg += f"\nA match is scheduled at {date_str}"
-            msg += f" with {min} members per group\n"
+            msg += "\n" + strings.scheduled(next_run, min)
 
         if not msg:
-            msg = "There are no matchees in this channel and no scheduled matches :("
+            msg = strings.no_scheduled()
 
         await interaction.response.send_message(msg, ephemeral=True, silent=True)
 
@@ -127,7 +124,7 @@ class MatcherCog(commands.Cog):
 
         # Bail if not a matcher
         if not state.State.get_user_has_scope(interaction.user.id, AuthScope.MATCHER):
-            await interaction.response.send_message("You'll need the 'matcher' scope to schedule a match",
+            await interaction.response.send_message(strings.need_matcher_scope(),
                                                     ephemeral=True, silent=True)
             return
 
@@ -139,13 +136,12 @@ class MatcherCog(commands.Cog):
         logger.info("Scheduled new match task in %s with min %s weekday %s hour %s",
                     channel_id, members_min, weekday, hour)
         next_run = util.get_next_datetime(weekday, hour)
-        date_str = util.datetime_as_discord_time(next_run)
 
         view = discord.ui.View(timeout=None)
         view.add_item(ScheduleButton())
 
         await interaction.response.send_message(
-            f"Done :) Next run will be at {date_str}",
+            strings.scheduled_success(next_run),
             ephemeral=True, silent=True, view=view)
 
     @app_commands.command(description="Cancel all scheduled matches in this channel")
@@ -154,7 +150,7 @@ class MatcherCog(commands.Cog):
         """Cancel scheduled matches in this channel"""
         # Bail if not a matcher
         if not state.State.get_user_has_scope(interaction.user.id, AuthScope.MATCHER):
-            await interaction.response.send_message("You'll need the 'matcher' scope to remove scheduled matches",
+            await interaction.response.send_message(strings.need_matcher_scope(),
                                                     ephemeral=True, silent=True)
             return
 
@@ -163,8 +159,7 @@ class MatcherCog(commands.Cog):
         state.State.remove_channel_match_tasks(channel_id)
 
         await interaction.response.send_message(
-            "Done, all scheduled matches cleared in this channel!",
-            ephemeral=True, silent=True)
+            strings.cancelled(), ephemeral=True, silent=True)
 
     @app_commands.command(description="Match up matchees")
     @commands.guild_only()
@@ -186,24 +181,23 @@ class MatcherCog(commands.Cog):
 
         # Let the user know when there's nobody to match
         if not groups:
-            await interaction.response.send_message("Nobody to match up :(", ephemeral=True, silent=True)
+            await interaction.response.send_message(strings.nobody_to_match(), ephemeral=True, silent=True)
             return
 
         # Post about all the groups with a button to send to the channel
         groups_list = '\n'.join(
             ", ".join([m.mention for m in g]) for g in groups)
-        msg = f"Roger! I've generated example groups for ya:\n\n{groups_list}"
+        msg = strings.generated_groups(groups_list)
         view = discord.utils.MISSING
 
         if state.State.get_user_has_scope(interaction.user.id, AuthScope.MATCHER):
             # Otherwise set up the button
-            msg += "\n\nClick the button to match up groups and send them to the channel.\n"
+            msg += "\n\n" + strings.click_to_match() + "\n"
             view = discord.ui.View(timeout=None)
             view.add_item(MatchDynamicButton(members_min))
         else:
             # Let a non-matcher know why they don't have the button
-            msg += f"\n\nYou'll need the {AuthScope.MATCHER}"
-            msg += " scope to post this to the channel, sorry!"
+            msg += "\n\n" + strings.need_matcher_to_post()
 
         await interaction.response.send_message(msg, ephemeral=True, silent=True, view=view)
 
@@ -216,13 +210,12 @@ class MatcherCog(commands.Cog):
         for (channel, min) in state.State.get_active_match_tasks():
             logger.info("Scheduled match task triggered in %s", channel)
             msg_channel = self.bot.get_channel(int(channel))
-            await matching.match_groups_in_channel(state.State, msg_channel, min)
+            await match_groups_in_channel(msg_channel, min)
 
         for (channel, _) in state.State.get_active_match_tasks(datetime.now() + timedelta(days=1)):
             logger.info("Reminding about scheduled task in %s", channel)
             msg_channel = self.bot.get_channel(int(channel))
-            await msg_channel.send("Arf arf! just a reminder I'll be doin a matcherino in here in T-24hrs!"
-                                   + "\nUse /join if you haven't already, or /pause if you want to skip a week :)")
+            await msg_channel.send(strings.reminder())
 
 
 # Increment when adjusting the custom_id so we don't confuse old users
@@ -260,10 +253,33 @@ class MatchDynamicButton(discord.ui.DynamicItem[discord.ui.Button],
                     intrctn.guild.name, intrctn.channel.name)
 
         # Let the user know we've recieved the message
-        await intrctn.response.send_message(content="Matchy is matching matchees...", ephemeral=True)
+        await intrctn.response.send_message(content=strings.matching(), ephemeral=True)
 
         # Perform the match
-        await matching.match_groups_in_channel(intrctn.channel, self.min)
+        await match_groups_in_channel(intrctn.channel, self.min)
+
+
+async def match_groups_in_channel(channel: discord.channel, min: int):
+    """Match up the groups in a given channel"""
+    groups = matching.active_members_to_groups(channel, min)
+
+    # Send the groups
+    for group in groups:
+        message = await channel.send(
+            strings.matched_up([m.mention for m in group]))
+        # Set up a thread for this match if the bot has permissions to do so
+        if channel.permissions_for(channel.guild.me).create_public_threads:
+            await channel.create_thread(
+                name=strings.thread_title([m.display_name for m in group]),
+                message=message,
+                reason="Creating a matching thread")
+
+    # Close off with a message
+    await channel.send(strings.matching_done())
+    # Save the groups to the history
+    state.State.log_groups(groups)
+
+    logger.info("Done! Matched into %s groups.", len(groups))
 
 
 class ScheduleButton(discord.ui.Button):
@@ -284,16 +300,16 @@ class ScheduleButton(discord.ui.Button):
 
         tasks = state.State.get_channel_match_tasks(interaction.channel.id)
 
-        msg = f"{interaction.user.mention} added a match to this channel!\n"
-        msg += "Current scheduled matches are:"
+        msg = strings.added_schedule(interaction.user.mention) + "\n"
+        msg += strings.scheduled_matches()
 
         if tasks:
             for (day, hour, min) in tasks:
                 next_run = util.get_next_datetime(day, hour)
-                date_str = util.datetime_as_discord_time(next_run)
-                msg += f"\n{date_str} with {min} members per group\n"
+                msg += strings.scheduled(next_run, min)
 
             await interaction.channel.send(msg)
-            await interaction.response.send_message(content="Posted :)", ephemeral=True)
+            await interaction.response.send_message(
+                content=strings.acknowledgement(interaction.user.mention), ephemeral=True)
         else:
-            await interaction.response.send_message(content="No scheduled matches to post :(", ephemeral=True)
+            await interaction.response.send_message(content=strings.no_scheduled(), ephemeral=True)

@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from functools import reduce
+import random
 
 
 def get_day_with_suffix(day):
@@ -59,3 +60,11 @@ def set_nested_value(d, *keys, value=None):
         d[leaf] = value
     elif leaf in d:
         del d[leaf]
+
+
+def randomised(func):
+    "Randomise which in a list we actually return"
+    def wrapper(*args, **kwargs):
+        vals = func(*args, **kwargs)
+        return random.choice(vals) if isinstance(vals, list) else vals
+    return wrapper
