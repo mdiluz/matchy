@@ -11,6 +11,12 @@ import itertools
 from datetime import datetime, timedelta
 
 
+@pytest.fixture(autouse=True)
+def clean_state():
+    """Ensure every single one of these tests has a clean state"""
+    state.State = state._State(state._EMPTY_DICT)
+
+
 def test_protocols():
     """Verify the protocols we're using match the discord ones"""
     assert isinstance(discord.Member, matching.Member)
@@ -59,16 +65,16 @@ class Member():
         return self._id
 
 
-def members_to_groups_validate(matchees: list[Member], tmp_state: state.State, per_group: int):
+def members_to_groups_validate(matchees: list[Member], per_group: int):
     """Inner function to validate the main output of the groups function"""
-    groups = matching.members_to_groups(matchees, tmp_state, per_group)
+    groups = matching.members_to_groups(matchees, per_group)
 
     # We should always have one group
     assert len(groups)
 
     # Log the groups to history
     # This will validate the internals
-    tmp_state.log_groups(groups)
+    state.State.log_groups(groups)
 
     # Ensure each group contains within the bounds of expected members
     for group in groups:
@@ -96,8 +102,7 @@ def members_to_groups_validate(matchees: list[Member], tmp_state: state.State, p
 ], ids=['single', "larger_groups", "100_members", "5_group", "pairs", "356_big_groups"])
 def test_members_to_groups_no_history(matchees, per_group):
     """Test simple group matching works"""
-    tmp_state = state.State(state._EMPTY_DICT)
-    members_to_groups_validate(matchees, tmp_state, per_group)
+    members_to_groups_validate(matchees, per_group)
 
 
 def items_found_in_lists(list_of_lists, items):
@@ -328,13 +333,12 @@ def items_found_in_lists(list_of_lists, items):
 ], ids=['simple_history', 'fallback', 'example_1', 'example_2', 'example_3'])
 def test_unique_regressions(history_data, matchees, per_group, checks):
     """Test a bunch of unqiue failures that happened in the past"""
-    tmp_state = state.State(state._EMPTY_DICT)
 
     # Replay the history
     for d in history_data:
-        tmp_state.log_groups(d["groups"], d["ts"])
+        state.State.log_groups(d["groups"], d["ts"])
 
-    groups = members_to_groups_validate(matchees, tmp_state, per_group)
+    groups = members_to_groups_validate(matchees, per_group)
 
     # Run the custom validate functions
     for check in checks:
@@ -380,28 +384,25 @@ def test_stess_random_groups(per_group, num_members, num_history):
         member.roles = [Role(i) for i in rand.sample(range(1, 8), 3)]
 
     # For each history item match up groups and log those
-    cumulative_state = state.State(state._EMPTY_DICT)
     for i in range(num_history+1):
 
         # Grab the num of members and replay
         rand.shuffle(possible_members)
         members = copy.deepcopy(possible_members[:num_members])
 
-        groups = members_to_groups_validate(
-            members, cumulative_state, per_group)
-        cumulative_state.log_groups(
+        groups = members_to_groups_validate(members, per_group)
+        state.State.log_groups(
             groups, datetime.now() - timedelta(days=num_history-i))
 
 
 def test_auth_scopes():
-    tmp_state = state.State(state._EMPTY_DICT)
 
     id = "1"
-    assert not tmp_state.get_user_has_scope(id, state.AuthScope.MATCHER)
+    assert not state.State.get_user_has_scope(id, state.AuthScope.MATCHER)
 
     id = "2"
-    tmp_state.set_user_scope(id, state.AuthScope.MATCHER)
-    assert tmp_state.get_user_has_scope(id, state.AuthScope.MATCHER)
+    state.State.set_user_scope(id, state.AuthScope.MATCHER)
+    assert state.State.get_user_has_scope(id, state.AuthScope.MATCHER)
 
     # Validate the state by constucting a new one
-    _ = state.State(tmp_state._dict)
+    _ = state._State(state.State._dict)

@@ -2,7 +2,6 @@ import discord
 import discord.ext.commands as commands
 import pytest
 import pytest_asyncio
-import matchy.state as state
 import discord.ext.test as dpytest
 
 from matchy.cogs.owner import OwnerCog
@@ -20,7 +19,7 @@ async def bot():
     b = commands.Bot(command_prefix="$",
                      intents=intents)
     await b._async_setup_hook()
-    await b.add_cog(OwnerCog(b, state.State(state._EMPTY_DICT)))
+    await b.add_cog(OwnerCog(b))
     dpytest.configure(b)
     yield b
     await dpytest.empty_queue()

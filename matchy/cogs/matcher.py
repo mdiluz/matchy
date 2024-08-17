@@ -20,15 +20,14 @@ logger.setLevel(logging.INFO)
 
 
 class MatcherCog(commands.Cog):
-    def __init__(self, bot: commands.Bot, state: State):
+    def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.state = state
 
     @commands.Cog.listener()
     async def on_ready(self):
         """Bot is ready and connected"""
         self.run_hourly_tasks.start()
-        self.bot.add_dynamic_items(DynamicGroupButton)
+        self.bot.add_dynamic_items(MatchDynamicButton)
         activity = discord.Game("/join")
         await self.bot.change_presence(status=discord.Status.online, activity=activity)
         logger.info("Bot is up and ready!")
@@ -39,7 +38,7 @@ class MatcherCog(commands.Cog):
         logger.info("Handling /join in %s %s from %s",
                     interaction.guild.name, interaction.channel, interaction.user.name)
 
-        self.state.set_user_active_in_channel(
+        state.State.set_user_active_in_channel(
             interaction.user.id, interaction.channel.id)
         await interaction.response.send_message(
             strings.acknowledgement(interaction.user.mention) + "\n"
@@ -52,7 +51,7 @@ class MatcherCog(commands.Cog):
         logger.info("Handling /leave in %s %s from %s",
                     interaction.guild.name, interaction.channel, interaction.user.name)
 
-        self.state.set_user_active_in_channel(
+        state.State.set_user_active_in_channel(
             interaction.user.id, interaction.channel.id, False)
         await interaction.response.send_message(
             strings.user_leave(interaction.user.mention), ephemeral=True, silent=True)
@@ -67,7 +66,7 @@ class MatcherCog(commands.Cog):
         if days is None:  # Default to a week
             days = 7
         until = datetime.now() + timedelta(days=days)
-        self.state.set_user_paused_in_channel(
+        state.State.set_user_paused_in_channel(
             interaction.user.id, interaction.channel.id, until)
         await interaction.response.send_message(
             strings.acknowledgement(interaction.user.mention) + "\n"
@@ -80,8 +79,7 @@ class MatcherCog(commands.Cog):
         logger.info("Handling /list command in %s %s from %s",
                     interaction.guild.name, interaction.channel, interaction.user.name)
 
-        (matchees, paused) = matching.get_matchees_in_channel(
-            self.state, interaction.channel)
+        (matchees, paused) = matching.get_matchees_in_channel(interaction.channel)
 
         msg = ""
 
@@ -93,7 +91,7 @@ class MatcherCog(commands.Cog):
             mentions = [m.mention for m in paused]
             msg += "\n" + strings.paused_matchees(mentions) + "\n"
 
-        tasks = self.state.get_channel_match_tasks(interaction.channel.id)
+        tasks = state.State.get_channel_match_tasks(interaction.channel.id)
         for (day, hour, min) in tasks:
             next_run = util.get_next_datetime(day, hour)
             msg += "\n" + strings.scheduled(next_run, min)
@@ -125,13 +123,13 @@ class MatcherCog(commands.Cog):
         channel_id = str(interaction.channel.id)
 
         # Bail if not a matcher
-        if not self.state.get_user_has_scope(interaction.user.id, AuthScope.MATCHER):
+        if not state.State.get_user_has_scope(interaction.user.id, AuthScope.MATCHER):
             await interaction.response.send_message(strings.need_matcher_scope(),
                                                     ephemeral=True, silent=True)
             return
 
         # Add the scheduled task and save
-        self.state.set_channel_match_task(
+        state.State.set_channel_match_task(
             channel_id, members_min, weekday, hour)
 
         # Let the user know what happened
@@ -139,23 +137,26 @@ class MatcherCog(commands.Cog):
                     channel_id, members_min, weekday, hour)
         next_run = util.get_next_datetime(weekday, hour)
 
+        view = discord.ui.View(timeout=None)
+        view.add_item(ScheduleButton())
+
         await interaction.response.send_message(
             strings.scheduled_success(next_run),
-            ephemeral=True, silent=True)
+            ephemeral=True, silent=True, view=view)
 
     @app_commands.command(description="Cancel all scheduled matches in this channel")
     @commands.guild_only()
     async def cancel(self, interaction: discord.Interaction):
         """Cancel scheduled matches in this channel"""
         # Bail if not a matcher
-        if not self.state.get_user_has_scope(interaction.user.id, AuthScope.MATCHER):
+        if not state.State.get_user_has_scope(interaction.user.id, AuthScope.MATCHER):
             await interaction.response.send_message(strings.need_matcher_scope(),
                                                     ephemeral=True, silent=True)
             return
 
         # Add the scheduled task and save
         channel_id = str(interaction.channel.id)
-        self.state.remove_channel_match_tasks(channel_id)
+        state.State.remove_channel_match_tasks(channel_id)
 
         await interaction.response.send_message(
             strings.cancelled(), ephemeral=True, silent=True)
@@ -176,7 +177,7 @@ class MatcherCog(commands.Cog):
 
         # Grab the groups
         groups = matching.active_members_to_groups(
-            self.state, interaction.channel, members_min)
+            interaction.channel, members_min)
 
         # Let the user know when there's nobody to match
         if not groups:
@@ -189,11 +190,11 @@ class MatcherCog(commands.Cog):
         msg = strings.generated_groups(groups_list)
         view = discord.utils.MISSING
 
-        if self.state.get_user_has_scope(interaction.user.id, AuthScope.MATCHER):
+        if state.State.get_user_has_scope(interaction.user.id, AuthScope.MATCHER):
             # Otherwise set up the button
             msg += "\n\n" + strings.click_to_match() + "\n"
             view = discord.ui.View(timeout=None)
-            view.add_item(DynamicGroupButton(members_min))
+            view.add_item(MatchDynamicButton(members_min))
         else:
             # Let a non-matcher know why they don't have the button
             msg += "\n\n" + strings.need_matcher_to_post()
@@ -206,12 +207,12 @@ class MatcherCog(commands.Cog):
     async def run_hourly_tasks(self):
         """Run any hourly tasks we have"""
 
-        for (channel, min) in self.state.get_active_match_tasks():
+        for (channel, min) in state.State.get_active_match_tasks():
             logger.info("Scheduled match task triggered in %s", channel)
             msg_channel = self.bot.get_channel(int(channel))
-            await match_groups_in_channel(self.state, msg_channel, min)
+            await match_groups_in_channel(msg_channel, min)
 
-        for (channel, _) in self.state.get_active_match_tasks(datetime.now() + timedelta(days=1)):
+        for (channel, _) in state.State.get_active_match_tasks(datetime.now() + timedelta(days=1)):
             logger.info("Reminding about scheduled task in %s", channel)
             msg_channel = self.bot.get_channel(int(channel))
             await msg_channel.send(strings.reminder())
@@ -222,7 +223,7 @@ _MATCH_BUTTON_CUSTOM_ID_VERSION = 1
 _MATCH_BUTTON_CUSTOM_ID_PREFIX = f'match:v{_MATCH_BUTTON_CUSTOM_ID_VERSION}:'
 
 
-class DynamicGroupButton(discord.ui.DynamicItem[discord.ui.Button],
+class MatchDynamicButton(discord.ui.DynamicItem[discord.ui.Button],
                          template=_MATCH_BUTTON_CUSTOM_ID_PREFIX + r'min:(?P<min>[0-9]+)'):
     """
     Describes a simple button that lets the user trigger a match
@@ -237,7 +238,6 @@ class DynamicGroupButton(discord.ui.DynamicItem[discord.ui.Button],
             )
         )
         self.min: int = min
-        self.state = state.load_from_file()
 
     # This is called when the button is clicked and the custom_id matches the template.
     @classmethod
@@ -256,10 +256,10 @@ class DynamicGroupButton(discord.ui.DynamicItem[discord.ui.Button],
         await intrctn.response.send_message(content=strings.matching(), ephemeral=True)
 
         # Perform the match
-        await match_groups_in_channel(self.state, intrctn.channel, self.min)
+        await match_groups_in_channel(intrctn.channel, self.min)
 
 
-async def match_groups_in_channel(state: State, channel: discord.channel, min: int):
+async def match_groups_in_channel(channel: discord.channel, min: int):
     """Match up the groups in a given channel"""
     groups = matching.active_members_to_groups(state, channel, min)
 
@@ -277,6 +277,39 @@ async def match_groups_in_channel(state: State, channel: discord.channel, min: i
     # Close off with a message
     await channel.send(strings.matching_done())
     # Save the groups to the history
-    state.log_groups(groups)
+    state.State.log_groups(groups)
 
     logger.info("Done! Matched into %s groups.", len(groups))
+
+
+class ScheduleButton(discord.ui.Button):
+    """
+    Describes a simple button that lets the user post the schedule to the channel
+    """
+
+    def __init__(self) -> None:
+        super().__init__(
+            label='Post schedule',
+            style=discord.ButtonStyle.blurple
+        )
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        """Post about the current schedule when requested"""
+        logger.info("Handling schedule button press byuser %s from %s in #%s",
+                    interaction.user, interaction.guild.name, interaction.channel.name)
+
+        tasks = state.State.get_channel_match_tasks(interaction.channel.id)
+
+        msg = f"{interaction.user.mention} added a match to this channel!\n"
+        msg += "Current scheduled matches are:"
+
+        if tasks:
+            for (day, hour, min) in tasks:
+                next_run = util.get_next_datetime(day, hour)
+                date_str = util.datetime_as_discord_time(next_run)
+                msg += f"\n{date_str} with {min} members per group\n"
+
+            await interaction.channel.send(msg)
+            await interaction.response.send_message(content="Posted :)", ephemeral=True)
+        else:
+            await interaction.response.send_message(content="No scheduled matches to post :(", ephemeral=True)

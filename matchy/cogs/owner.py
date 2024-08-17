@@ -3,16 +3,15 @@ Owner bot cog
 """
 import logging
 from discord.ext import commands
-from matchy.state import State, AuthScope
+import matchy.state as state
 
 logger = logging.getLogger("owner")
 logger.setLevel(logging.INFO)
 
 
 class OwnerCog(commands.Cog):
-    def __init__(self, bot: commands.Bot, state: State):
+    def __init__(self, bot: commands.Bot):
         self._bot = bot
-        self._state = state
 
     @commands.command()
     @commands.dm_only()
@@ -48,7 +47,7 @@ class OwnerCog(commands.Cog):
         Grant the matcher scope to a given user
         """
         if user.isdigit():
-            self._state.set_user_scope(str(user), AuthScope.MATCHER)
+            state.State.set_user_scope(str(user), state.AuthScope.MATCHER)
             logger.info("Granting user %s matcher scope", user)
             await ctx.reply("Done!", ephemeral=True)
         else:

@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Protocol, runtime_checkable
 from matchy.state import State, ts_to_datetime
 import matchy.util as util
+import matchy.state as state
 
 
 class _ScoreFactors(int):
@@ -95,7 +96,6 @@ def get_member_group_eligibility_score(member: Member,
 
 
 def attempt_create_groups(matchees: list[Member],
-                          state: State,
                           oldest_relevant_ts: datetime,
                           per_group: int) -> tuple[bool, list[list[Member]]]:
     """History aware group matching"""
@@ -110,10 +110,10 @@ def attempt_create_groups(matchees: list[Member],
     while matchees_left:
         # Get the next matchee to place
         matchee = matchees_left.pop()
-        matchee_matches = state.get_user_matches(matchee.id)
+        matchee_matches = state.State.get_user_matches(matchee.id)
         relevant_matches = [int(id) for id, ts
                             in matchee_matches.items()
-                            if ts_to_datetime(ts) >= oldest_relevant_ts]
+                            if state.ts_to_datetime(ts) >= oldest_relevant_ts]
 
         # Try every single group from the current group onwards
         # Progressing through the groups like this ensures we slowly fill them up with compatible people
@@ -143,7 +143,6 @@ def attempt_create_groups(matchees: list[Member],
 
 
 def members_to_groups(matchees: list[Member],
-                      state: State,
                       per_group: int = 3,
                       allow_fallback: bool = False) -> list[list[Member]]:
     """Generate the groups from the set of matchees"""
@@ -155,14 +154,14 @@ def members_to_groups(matchees: list[Member],
         return []
 
     # Walk from the start of history until now trying to match up groups
-    for oldest_relevant_datetime in state.get_history_timestamps(matchees) + [datetime.now()]:
+    for oldest_relevant_datetime in state.State.get_history_timestamps(matchees) + [datetime.now()]:
 
         # Attempt with each starting matchee
         for shifted_matchees in util.iterate_all_shifts(matchees):
 
             attempts += 1
             groups = attempt_create_groups(
-                shifted_matchees, state, oldest_relevant_datetime, per_group)
+                shifted_matchees, oldest_relevant_datetime, per_group)
 
             # Fail the match if our groups aren't big enough
             if num_groups <= 1 or (groups and all(len(g) >= per_group for g in groups)):
@@ -179,19 +178,21 @@ def members_to_groups(matchees: list[Member],
     assert False
 
 
-def get_matchees_in_channel(state: State, channel: discord.channel):
+def get_matchees_in_channel(channel: discord.channel):
     """Fetches the matchees in a channel"""
     # Reactivate any unpaused users
-    state.reactivate_users(channel.id)
+    state.State.reactivate_users(channel.id)
     # Gather up the prospective matchees
-    active = [m for m in channel.members if state.get_user_active_in_channel(m.id, channel.id)]
-    paused = [m for m in channel.members if state.get_user_paused_in_channel(m.id, channel.id)]
+    active = [m for m in channel.members if state.State.get_user_active_in_channel(
+        m.id, channel.id)]
+    paused = [m for m in channel.members if state.State.get_user_paused_in_channel(
+        m.id, channel.id)]
     return (active, paused)
 
 
-def active_members_to_groups(state: State, channel: discord.channel, min_members: int):
+def active_members_to_groups(channel: discord.channel, min_members: int):
     """Helper to create groups from channel members"""
     # Gather up the prospective matchees
-    matchees = get_matchees_in_channel(state, channel)
+    matchees = get_matchees_in_channel(channel)
     # Create our groups!
-    return members_to_groups(matchees, state, min_members, allow_fallback=True)
+    return members_to_groups(matchees, min_members, allow_fallback=True)
