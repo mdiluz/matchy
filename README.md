@@ -1,3 +1,6 @@
+# Moved
+This has been moved to https://forge.mdiluz.io/mdiluz/matchy
+
 # Matchy
 <img src="img/matchy_alpha.png" width="255">
 
